@@ -1,0 +1,55 @@
+# ==========================================
+# 根目录全局及通用忽略
+# ==========================================
+
+# 临时实验与调试目录 (AGENTS.md 规范)
+temp/
+scratch/
+
+# 系统及编辑器通用缓存
+.DS_Store
+Thumbs.db
+desktop.ini
+*.bak
+*.swp
+*~
+
+# IDE 及编辑器配置
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# ==========================================
+# Android & Gradle 通用忽略 (对所有子 App 生效)
+# ==========================================
+
+# Gradle 缓存与运行时
+.gradle/
+**/build/
+**/.gradle/
+
+# Android 本地 SDK 路径配置 (绝不可提交)
+local.properties
+**/local.properties
+
+# Android Studio 诊断与缓存
+captures/
+**/captures/
+.externalNativeBuild/
+**/.externalNativeBuild/
+.cxx/
+**/.cxx/
+
+# 构建日志与性能报告
+*.log
+**/buildOutput.log
+
+# 打包签名与私有密钥文件
+*.jks
+*.keystore
+google-services.json
