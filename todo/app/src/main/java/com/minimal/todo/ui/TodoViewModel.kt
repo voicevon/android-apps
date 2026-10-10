@@ -5,20 +5,42 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.minimal.todo.data.TodoDatabase
 import com.minimal.todo.data.TodoItem
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val todoDao = TodoDatabase.getDatabase(application).todoDao()
 
-    val todos: StateFlow<List<TodoItem>> = todoDao.getAllTodos()
+    private val _selectedColorFilter = MutableStateFlow<String?>(null)
+    val selectedColorFilter: StateFlow<String?> = _selectedColorFilter.asStateFlow()
+
+    val allTodos: StateFlow<List<TodoItem>> = todoDao.getAllTodos()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    val filteredTodos: StateFlow<List<TodoItem>> = combine(allTodos, _selectedColorFilter) { list, color ->
+        if (color == null) {
+            list
+        } else {
+            list.filter { it.colorHex.equals(color, ignoreCase = true) }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    fun setColorFilter(colorHex: String?) {
+        _selectedColorFilter.value = colorHex
+    }
 
     fun addTodo(
         title: String,
@@ -29,12 +51,14 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         if (title.isBlank()) return
         viewModelScope.launch {
+            val maxIndex = todoDao.getMaxOrderIndex() ?: 0
             val item = TodoItem(
                 title = title.trim(),
                 description = description.trim(),
                 hasReminder = hasReminder,
                 reminderTime = reminderTime,
-                colorHex = colorHex
+                colorHex = colorHex,
+                orderIndex = maxIndex + 1
             )
             todoDao.insertTodo(item)
         }
@@ -61,6 +85,44 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     fun restoreTodo(todo: TodoItem) {
         viewModelScope.launch {
             todoDao.insertTodo(todo)
+        }
+    }
+
+    /**
+     * 上下拖拽交换或移动项，并持久化到数据库
+     */
+    fun reorderItems(fromIndex: Int, toIndex: Int) {
+        val currentList = filteredTodos.value.toMutableList()
+        if (fromIndex !in currentList.indices || toIndex !in currentList.indices || fromIndex == toIndex) {
+            return
+        }
+
+        val movedItem = currentList.removeAt(fromIndex)
+        currentList.add(toIndex, movedItem)
+
+        // 重新分配 orderIndex 并批量持久化
+        val updatedItems = currentList.mapIndexed { index, item ->
+            item.copy(orderIndex = index)
+        }
+
+        viewModelScope.launch {
+            todoDao.updateTodos(updatedItems)
+        }
+    }
+
+    fun moveTodoUp(todo: TodoItem) {
+        val currentList = filteredTodos.value
+        val index = currentList.indexOfFirst { it.id == todo.id }
+        if (index > 0) {
+            reorderItems(index, index - 1)
+        }
+    }
+
+    fun moveTodoDown(todo: TodoItem) {
+        val currentList = filteredTodos.value
+        val index = currentList.indexOfFirst { it.id == todo.id }
+        if (index in 0 until currentList.size - 1) {
+            reorderItems(index, index + 1)
         }
     }
 }

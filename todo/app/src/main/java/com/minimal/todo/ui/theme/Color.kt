@@ -10,13 +10,11 @@ val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
-// Minimal-Todo Tag Colors
+// Minimal-Todo Tag Colors (红、绿、蓝、黄、青 5 种精选颜色)
 val TagColors = listOf(
-    "#3D5AFE", // Blue
-    "#00E676", // Green
-    "#FF3D00", // Orange-Red
-    "#FFEA00", // Yellow
-    "#E040FB", // Magenta
-    "#00E5FF", // Cyan
-    "#7C4DFF"  // Deep Purple
+    "#FF3D00", // 红 (Red)
+    "#00E676", // 绿 (Green)
+    "#2979FF", // 蓝 (Blue)
+    "#FFD600", // 黄 (Yellow)
+    "#00E5FF"  // 青 (Cyan)
 )

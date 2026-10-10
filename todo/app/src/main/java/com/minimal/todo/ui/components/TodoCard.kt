@@ -1,8 +1,5 @@
 package com.minimal.todo.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,17 +18,27 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,8 +59,12 @@ fun TodoCard(
     onToggleComplete: () -> Unit,
     onClick: () -> Unit,
     onDelete: () -> Unit,
+    onMoveUp: (() -> Unit)? = null,
+    onMoveDown: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { dismissValue ->
             if (dismissValue != SwipeToDismissBoxValue.Settled) {
@@ -68,7 +79,6 @@ fun TodoCard(
     SwipeToDismissBox(
         state = dismissState,
         backgroundContent = {
-            val isDismissed = dismissState.dismissDirection != SwipeToDismissBoxValue.Settled
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -110,13 +120,13 @@ fun TodoCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
+                    .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Minimal-Todo iconic circular letter badge / check mark
+                // Minimal-Todo 经典圆形色彩标识
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(38.dp)
                         .clip(CircleShape)
                         .background(if (todo.isCompleted) Color.Gray else badgeColor),
                     contentAlignment = Alignment.Center
@@ -126,7 +136,7 @@ fun TodoCard(
                             imageVector = Icons.Default.Check,
                             contentDescription = "Completed",
                             tint = Color.White,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     } else {
                         val initial = todo.title.firstOrNull()?.uppercaseChar()?.toString() ?: ""
@@ -134,12 +144,12 @@ fun TodoCard(
                             text = initial,
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
+                            fontSize = 17.sp
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.width(14.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
                 Column(
                     modifier = Modifier.weight(1f),
@@ -194,6 +204,7 @@ fun TodoCard(
                     }
                 }
 
+                // 勾选框
                 Checkbox(
                     checked = todo.isCompleted,
                     onCheckedChange = { onToggleComplete() },
@@ -202,6 +213,48 @@ fun TodoCard(
                         uncheckedColor = MaterialTheme.colorScheme.outline
                     )
                 )
+
+                // 排序手柄及上下调整菜单
+                Box {
+                    IconButton(
+                        onClick = { showMenu = true },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DragHandle,
+                            contentDescription = "调整上下顺序",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("上移一项") },
+                            leadingIcon = {
+                                Icon(Icons.Default.KeyboardArrowUp, contentDescription = null)
+                            },
+                            enabled = onMoveUp != null,
+                            onClick = {
+                                showMenu = false
+                                onMoveUp?.invoke()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("下移一项") },
+                            leadingIcon = {
+                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                            },
+                            enabled = onMoveDown != null,
+                            onClick = {
+                                showMenu = false
+                                onMoveDown?.invoke()
+                            }
+                        )
+                    }
+                }
             }
         }
     }
