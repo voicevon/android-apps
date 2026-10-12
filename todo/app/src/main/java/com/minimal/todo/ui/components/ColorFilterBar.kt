@@ -28,7 +28,7 @@ fun ColorFilterBar(
     onSelectColor: (String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 6 个圆形紧凑并排：白色 (代表全部/全选) + 红、绿、蓝、黄、青
+    // 5 个圆形紧凑并排：白色 (代表全部/全选) + 蓝、绿、黄、红 4 种颜色
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -73,7 +73,7 @@ fun ColorFilterBar(
             }
         }
 
-        // 2. 红、绿、蓝、黄、青 5 种颜色
+        // 2. 蓝、绿、黄、红 4 种颜色
         TagColors.forEach { colorHex ->
             val isSelected = selectedColorHex.equals(colorHex, ignoreCase = true)
             val parsedColor = runCatching { Color(android.graphics.Color.parseColor(colorHex)) }

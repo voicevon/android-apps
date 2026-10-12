@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.minimal.todo.data.TodoDatabase
 import com.minimal.todo.data.TodoItem
+import com.minimal.todo.ui.theme.TagColors
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,7 +29,14 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     val filteredTodos: StateFlow<List<TodoItem>> = combine(allTodos, _selectedColorFilter) { list, color ->
         if (color == null) {
-            list
+            val colorPriority = TagColors.mapIndexed { index, hex -> hex.lowercase() to index }.toMap()
+            list.sortedWith(
+                compareBy<TodoItem> { todo ->
+                    colorPriority[todo.colorHex.lowercase()] ?: Int.MAX_VALUE
+                }.thenBy { it.isCompleted }
+                 .thenBy { it.orderIndex }
+                 .thenByDescending { it.createdAt }
+            )
         } else {
             list.filter { it.colorHex.equals(color, ignoreCase = true) }
         }
@@ -47,7 +55,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         description: String = "",
         hasReminder: Boolean = false,
         reminderTime: Long? = null,
-        colorHex: String = "#3D5AFE"
+        colorHex: String = "#2979FF"
     ) {
         if (title.isBlank()) return
         viewModelScope.launch {

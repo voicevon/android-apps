@@ -1,8 +1,5 @@
 package com.minimal.todo.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,7 +18,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.CheckCircleOutline
-import androidx.compose.material.icons.outlined.FilterAltOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -32,7 +28,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -52,7 +47,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.minimal.todo.data.TodoItem
@@ -91,7 +85,7 @@ fun TodoListScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Minimal Todo",
+                            text = "冯氏 Todo",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                         )
                         if (allTodos.isNotEmpty()) {
@@ -127,39 +121,13 @@ fun TodoListScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // 1. 紧凑型颜色分类过滤栏 (白色全选 + 5色过滤)
+            // 1. 紧凑型颜色分类过滤栏 (白色全选 + 4色过滤)
             ColorFilterBar(
                 selectedColorHex = selectedColorHex,
                 onSelectColor = { color ->
                     viewModel.setColorFilter(color)
                 }
             )
-
-            // 过滤状态指示横条
-            AnimatedVisibility(visible = selectedColorHex != null) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "已筛选特定颜色标签 (${filteredTodos.size} 项)",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    TextButton(onClick = { viewModel.setColorFilter(null) }) {
-                        Icon(
-                            imageVector = Icons.Outlined.FilterAltOff,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.size(4.dp))
-                        Text(text = "显示全部", fontSize = 12.sp)
-                    }
-                }
-            }
 
             // 2. 待办列表内容
             Box(modifier = Modifier.fillMaxSize()) {

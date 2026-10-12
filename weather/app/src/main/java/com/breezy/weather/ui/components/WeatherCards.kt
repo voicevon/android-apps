@@ -27,9 +27,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.breezy.weather.data.DailyForecast
@@ -185,103 +187,132 @@ fun DailyForecastCard(
     dailyList: List<DailyForecast>,
     modifier: Modifier = Modifier
 ) {
+    val minGlobal = dailyList.minOfOrNull { it.minTemp } ?: 0
+    val maxGlobal = dailyList.maxOfOrNull { it.maxTemp } ?: 35
+    val totalRange = (maxGlobal - minGlobal).coerceAtLeast(1).toFloat()
+
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(CardBackground)
-            .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
-            .padding(16.dp)
+            .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
+            .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
         Column {
             Text(
                 text = "未来 7 天天气预报",
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 color = TextWhiteSecondary
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(2.dp))
 
             dailyList.forEachIndexed { index, item ->
                 val info = WeatherCodeMapper.map(item.weatherCode)
 
+                // 紧凑型单行布局 (单行高度严格控制在 20dp 左右，一屏容纳更多内容)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                        .padding(vertical = 1.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 日期/星期
+                    // 1. 日期 / 星期 (今天高亮)
                     Text(
                         text = item.dateText,
-                        fontSize = 15.sp,
+                        fontSize = 13.sp,
                         fontWeight = if (index == 0) FontWeight.Bold else FontWeight.Normal,
-                        color = TextWhitePrimary,
-                        modifier = Modifier.width(56.dp)
+                        color = if (index == 0) TextWhitePrimary else TextWhitePrimary.copy(alpha = 0.9f),
+                        modifier = Modifier.width(44.dp),
+                        maxLines = 1,
+                        softWrap = false
                     )
 
-                    // 天气图标与描述
+                    // 2. 天气图标与描述
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.width(72.dp)
+                        modifier = Modifier.width(50.dp)
                     ) {
                         Icon(
                             imageVector = info.icon,
                             contentDescription = null,
                             tint = TextWhitePrimary,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
                         Text(
-                            text = info.description,
-                            fontSize = 13.sp,
-                            color = TextWhiteSecondary
+                            text = info.description.take(2),
+                            fontSize = 11.sp,
+                            color = TextWhiteSecondary,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
 
-                    // 温度区间
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        Text(
-                            text = "${item.minTemp}°",
-                            fontSize = 14.sp,
-                            color = TextWhiteSecondary
-                        )
+                    // 3. 最低温 (设置宽度32dp且禁止折行，确保度数符号°绝不换行掉落)
+                    Text(
+                        text = "${item.minTemp}°",
+                        fontSize = 13.sp,
+                        color = TextWhiteSecondary,
+                        modifier = Modifier.width(32.dp),
+                        textAlign = TextAlign.End,
+                        maxLines = 1,
+                        softWrap = false
+                    )
 
-                        // 极简微温度条
-                        Box(
-                            modifier = Modifier
-                                .padding(horizontal = 10.dp)
-                                .width(70.dp)
-                                .height(5.dp)
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(Color.White.copy(alpha = 0.25f))
-                        ) {
+                    // 4. 动态自适应弹性温域胶囊条
+                    val startFraction = ((item.minTemp - minGlobal) / totalRange).coerceIn(0f, 0.9f)
+                    val endFraction = ((item.maxTemp - minGlobal) / totalRange).coerceIn(startFraction + 0.1f, 1f)
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp)
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(Color.White.copy(alpha = 0.15f))
+                    ) {
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            if (startFraction > 0f) {
+                                Spacer(modifier = Modifier.weight(startFraction))
+                            }
                             Box(
                                 modifier = Modifier
-                                    .padding(start = 12.dp)
-                                    .width(46.dp)
-                                    .height(5.dp)
-                                    .clip(RoundedCornerShape(3.dp))
-                                    .background(Color.White.copy(alpha = 0.85f))
+                                    .weight(endFraction - startFraction)
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(
+                                                Color(0xFF81D4FA),
+                                                Color(0xFFFFB74D)
+                                            )
+                                        )
+                                    )
                             )
+                            if (1f - endFraction > 0f) {
+                                Spacer(modifier = Modifier.weight(1f - endFraction))
+                            }
                         }
-
-                        Text(
-                            text = "${item.maxTemp}°",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextWhitePrimary
-                        )
                     }
+
+                    // 5. 最高温 (设置宽度32dp且禁止折行)
+                    Text(
+                        text = "${item.maxTemp}°",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextWhitePrimary,
+                        modifier = Modifier.width(32.dp),
+                        textAlign = TextAlign.Start,
+                        maxLines = 1,
+                        softWrap = false
+                    )
                 }
 
                 if (index < dailyList.size - 1) {
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.04f))
                 }
             }
         }
@@ -295,16 +326,17 @@ fun MetricsGridCard(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             MetricItem(
                 icon = Icons.Outlined.WaterDrop,
                 title = "空气湿度",
-                value = "${data.humidity}%",
+                valueNumber = "${data.humidity}",
+                valueUnit = "%",
                 subtitle = if (data.humidity > 70) "偏潮湿" else "舒适",
                 modifier = Modifier.weight(1f)
             )
@@ -312,7 +344,8 @@ fun MetricsGridCard(
             MetricItem(
                 icon = Icons.Outlined.Air,
                 title = "实时风速",
-                value = "${data.windSpeed} km/h",
+                valueNumber = "${data.windSpeed}",
+                valueUnit = "km/h",
                 subtitle = "微风徐拂",
                 modifier = Modifier.weight(1f)
             )
@@ -320,12 +353,13 @@ fun MetricsGridCard(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             MetricItem(
                 icon = Icons.Outlined.WbSunny,
                 title = "紫外线指数",
-                value = String.format("%.1f", data.uvIndex),
+                valueNumber = String.format("%.1f", data.uvIndex),
+                valueUnit = "UV",
                 subtitle = if (data.uvIndex >= 6.0) "需注意防晒" else "适中",
                 modifier = Modifier.weight(1f)
             )
@@ -333,7 +367,8 @@ fun MetricsGridCard(
             MetricItem(
                 icon = Icons.Outlined.Compress,
                 title = "地面气压",
-                value = "${data.pressure.toInt()} hPa",
+                valueNumber = "${data.pressure.toInt()}",
+                valueUnit = "hPa",
                 subtitle = "标准大气压",
                 modifier = Modifier.weight(1f)
             )
@@ -345,16 +380,17 @@ fun MetricsGridCard(
 private fun MetricItem(
     icon: ImageVector,
     title: String,
-    value: String,
+    valueNumber: String,
+    valueUnit: String = "",
     subtitle: String,
     modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(CardBackground)
-            .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
-            .padding(16.dp)
+            .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
+            .padding(horizontal = 12.dp, vertical = 9.dp)
     ) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -362,31 +398,53 @@ private fun MetricItem(
                     imageVector = icon,
                     contentDescription = null,
                     tint = TextWhiteSecondary,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(15.dp)
                 )
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(5.dp))
                 Text(
                     text = title,
-                    fontSize = 12.sp,
-                    color = TextWhiteSecondary
+                    fontSize = 11.sp,
+                    color = TextWhiteSecondary,
+                    maxLines = 1
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Text(
-                text = value,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextWhitePrimary
-            )
-
             Spacer(modifier = Modifier.height(4.dp))
+
+            // 数值与单位同排紧凑对齐，绝对不换行
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = valueNumber,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextWhitePrimary,
+                    maxLines = 1,
+                    softWrap = false
+                )
+                if (valueUnit.isNotBlank()) {
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = valueUnit,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextWhiteSecondary,
+                        modifier = Modifier.padding(bottom = 1.dp),
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(2.dp))
 
             Text(
                 text = subtitle,
-                fontSize = 12.sp,
-                color = TextWhiteTertiary
+                fontSize = 10.sp,
+                color = TextWhiteTertiary,
+                maxLines = 1
             )
         }
     }

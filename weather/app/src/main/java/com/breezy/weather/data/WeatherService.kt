@@ -185,4 +185,85 @@ object WeatherService {
             updateTimeText = "离线缓存 • $updateTime"
         )
     }
+
+    suspend fun searchCities(query: String): List<City> = withContext(Dispatchers.IO) {
+        if (query.isBlank()) return@withContext DEFAULT_CITIES
+
+        try {
+            val encodedQuery = java.net.URLEncoder.encode(query.trim(), "UTF-8")
+            val url = "https://geocoding-api.open-meteo.com/v1/search?name=$encodedQuery&count=15&language=zh&format=json"
+            val request = Request.Builder().url(url).build()
+            val response = httpClient.newCall(request).execute()
+            val bodyString = response.body?.string() ?: throw Exception("Empty geocoding response")
+            val json = JSONObject(bodyString)
+
+            val results = json.optJSONArray("results")
+            if (results != null && results.length() > 0) {
+                val list = mutableListOf<City>()
+                for (i in 0 until results.length()) {
+                    val item = results.getJSONObject(i)
+                    val name = item.getString("name")
+                    val lat = item.getDouble("latitude")
+                    val lon = item.getDouble("longitude")
+                    val admin1 = item.optString("admin1", "")
+                    val country = item.optString("country", "")
+                    val province = if (admin1.isNotBlank()) admin1 else country
+                    list.add(City(name = name, latitude = lat, longitude = lon, province = province))
+                }
+                if (list.isNotEmpty()) return@withContext list
+            }
+        } catch (_: Exception) {
+        }
+
+        DEFAULT_CITIES.filter {
+            it.name.contains(query, ignoreCase = true) || it.province.contains(query, ignoreCase = true)
+        }
+    }
+
+    suspend fun reverseGeocode(context: android.content.Context, latitude: Double, longitude: Double): City = withContext(Dispatchers.IO) {
+        try {
+            val geocoder = android.location.Geocoder(context, Locale.CHINESE)
+            @Suppress("DEPRECATION")
+            val addresses = geocoder.getFromLocation(latitude, longitude, 1)
+            if (!addresses.isNullOrEmpty()) {
+                val addr = addresses[0]
+                val cityName = addr.locality
+                    ?: addr.subAdminArea
+                    ?: addr.subLocality
+                    ?: addr.adminArea
+                    ?: "我的位置"
+                val province = addr.adminArea ?: ""
+                val cleanName = cityName.replace("市", "").replace("区", "").replace("县", "").ifBlank { "我的位置" }
+                return@withContext City(
+                    name = cleanName,
+                    latitude = latitude,
+                    longitude = longitude,
+                    province = province
+                )
+            }
+        } catch (_: Exception) {
+        }
+
+        try {
+            val url = "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=$latitude&longitude=$longitude&localityLanguage=zh"
+            val request = Request.Builder().url(url).build()
+            val response = httpClient.newCall(request).execute()
+            val bodyString = response.body?.string() ?: ""
+            val json = JSONObject(bodyString)
+            val city = json.optString("city", "").ifEmpty { json.optString("locality", "") }
+            val province = json.optString("principalSubdivision", "")
+            if (city.isNotBlank()) {
+                val cleanName = city.replace("市", "").replace("区", "").ifBlank { "我的位置" }
+                return@withContext City(
+                    name = cleanName,
+                    latitude = latitude,
+                    longitude = longitude,
+                    province = province
+                )
+            }
+        } catch (_: Exception) {
+        }
+
+        City(name = "当前位置", latitude = latitude, longitude = longitude, province = "GPS定位")
+    }
 }

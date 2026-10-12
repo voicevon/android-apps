@@ -12,7 +12,7 @@ data class TodoItem(
     val isCompleted: Boolean = false,
     val hasReminder: Boolean = false,
     val reminderTime: Long? = null,
-    val colorHex: String = "#3D5AFE",
+    val colorHex: String = "#2979FF",
     val orderIndex: Int = 0,
     val createdAt: Long = System.currentTimeMillis()
 )

@@ -62,8 +62,9 @@ data class AlarmEntity(
      * 计算下一个实际触发的毫秒时间戳
      */
     fun calculateNextTriggerTime(fromTimeMillis: Long = System.currentTimeMillis()): Long {
+        val safeFromTime = fromTimeMillis + 2000L // 预留 2 秒安全裕度，防止同一分钟毫秒抖动导致的过去时间误判
         val calendar = Calendar.getInstance().apply {
-            timeInMillis = fromTimeMillis
+            timeInMillis = safeFromTime
             set(Calendar.HOUR_OF_DAY, hour)
             set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)
@@ -72,7 +73,7 @@ data class AlarmEntity(
 
         if (daysBitmask == 0) {
             // 一次性闹钟：如果设置的时间在过去，则排期为明天的这个时间
-            if (calendar.timeInMillis <= fromTimeMillis) {
+            if (calendar.timeInMillis <= safeFromTime) {
                 calendar.add(Calendar.DAY_OF_YEAR, 1)
             }
             return calendar.timeInMillis
@@ -82,7 +83,7 @@ data class AlarmEntity(
         for (i in 0..7) {
             val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
             if (isDayEnabled(dayOfWeek)) {
-                if (calendar.timeInMillis > fromTimeMillis) {
+                if (calendar.timeInMillis > safeFromTime) {
                     return calendar.timeInMillis
                 }
             }

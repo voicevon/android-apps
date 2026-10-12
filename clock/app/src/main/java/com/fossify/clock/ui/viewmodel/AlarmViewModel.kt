@@ -38,6 +38,14 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = null
         )
+
+        // 初始化时确保所有开启的闹钟都在系统 AlarmManager (setAlarmClock) 中注册
+        viewModelScope.launch {
+            val enabledAlarms = db.alarmDao().getEnabledAlarms()
+            for (alarm in enabledAlarms) {
+                scheduler.schedule(alarm)
+            }
+        }
     }
 
     fun toggleAlarm(alarm: AlarmEntity) {

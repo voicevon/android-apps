@@ -29,19 +29,54 @@ class AlarmReceiver : BroadcastReceiver() {
 
         when (action) {
             ACTION_ALARM_TRIGGER -> {
-                // 1. 播放响铃与振动
+                // 1. 深度休眠/熄屏下点亮屏幕
+                try {
+                    val pm = context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+                    @Suppress("DEPRECATION")
+                    val screenLock = pm?.newWakeLock(
+                        android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK or
+                        android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP or
+                        android.os.PowerManager.ON_AFTER_RELEASE,
+                        "FossifyClock:ScreenWakeLock"
+                    )
+                    screenLock?.acquire(3000L) // 唤醒点亮屏幕
+                } catch (_: Exception) {
+                }
+
+                // 2. 播放响铃与振动 (持有 WakeLock，使用循环播放的 MediaPlayer)
                 AlarmRinger.start(context, isVibrate)
 
-                // 2. 弹出全屏通知与唤醒界面
+                // 3. 弹出全屏通知与唤醒界面
                 showAlarmNotification(context, alarmId, hour, minute, label, isVibrate, snoozeMinutes)
 
-                // 3. 如果单次闹钟，更新数据库将其设为已关闭
+                // 4. 尝试直接启动 RingingActivity
+                try {
+                    val fullScreenIntent = Intent(context, RingingActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        putExtra(EXTRA_ALARM_ID, alarmId)
+                        putExtra(EXTRA_ALARM_HOUR, hour)
+                        putExtra(EXTRA_ALARM_MINUTE, minute)
+                        putExtra(EXTRA_ALARM_LABEL, label)
+                        putExtra(EXTRA_IS_VIBRATE, isVibrate)
+                        putExtra(EXTRA_SNOOZE_MINUTES, snoozeMinutes)
+                    }
+                    context.startActivity(fullScreenIntent)
+                } catch (_: Exception) {
+                }
+
+                // 4. 重复闹钟（如“每天叫醒”）立即排期下一次！单次闹钟则更新数据库将其设为已关闭
                 if (alarmId > 0) {
                     CoroutineScope(Dispatchers.IO).launch {
                         val db = AlarmDatabase.getInstance(context)
                         val alarm = db.alarmDao().getAlarmById(alarmId)
-                        if (alarm != null && alarm.daysBitmask == 0) {
-                            db.alarmDao().updateAlarm(alarm.copy(isEnabled = false))
+                        if (alarm != null) {
+                            if (alarm.daysBitmask == 0) {
+                                db.alarmDao().updateAlarm(alarm.copy(isEnabled = false))
+                            } else {
+                                // 核心修复：重新调度下一次（明天）的触发，永不遗漏
+                                val scheduler = AlarmScheduler(context)
+                                scheduler.schedule(alarm)
+                            }
                         }
                     }
                 }
@@ -77,9 +112,16 @@ class AlarmReceiver : BroadcastReceiver() {
         snoozeMinutes: Int
     ) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "fossify_alarm_channel"
+        val channelId = "fossify_alarm_channel_v2"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val alertUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
+                ?: android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
+            val audioAttributes = android.media.AudioAttributes.Builder()
+                .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+
             val channel = NotificationChannel(
                 channelId,
                 "闹钟提醒",
@@ -87,7 +129,7 @@ class AlarmReceiver : BroadcastReceiver() {
             ).apply {
                 description = "精确响铃与全屏闹钟通知"
                 enableVibration(isVibrate)
-                setSound(null, null) // 已通过 AlarmRinger 独立播放
+                setSound(alertUri, audioAttributes)
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -145,6 +187,7 @@ class AlarmReceiver : BroadcastReceiver() {
             .setContentText("$timeFormatted - 点击或滑动处理")
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
             .setOngoing(true)
             .setFullScreenIntent(fullScreenPendingIntent, true)

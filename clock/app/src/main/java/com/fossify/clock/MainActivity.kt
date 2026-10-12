@@ -71,6 +71,20 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // 检查并请求电池优化白名单 (防止深度休眠后系统冻结或杀死闹钟进程)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val powerManager = getSystemService(android.content.Context.POWER_SERVICE) as? android.os.PowerManager
+            if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(packageName)) {
+                try {
+                    val intent = android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = android.net.Uri.parse("package:$packageName")
+                    }
+                    startActivity(intent)
+                } catch (_: Exception) {
+                }
+            }
+        }
+
         setContent {
             FossifyClockTheme {
                 MainClockApp(viewModel = alarmViewModel)

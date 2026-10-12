@@ -56,14 +56,20 @@ import com.breezy.weather.ui.viewmodel.WeatherUiState
 import com.breezy.weather.ui.viewmodel.WeatherViewModel
 import java.util.Calendar
 
+import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.ui.platform.LocalContext
+
 @Composable
 fun WeatherScreen(
     viewModel: WeatherViewModel,
+    onRequestLocationPermission: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val currentCity by viewModel.currentCity.collectAsState()
     val weatherState by viewModel.weatherState.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val isLocating by viewModel.isLocating.collectAsState()
 
     var showCityDialog by remember { mutableStateOf(false) }
 
@@ -92,7 +98,7 @@ fun WeatherScreen(
             .statusBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // 顶栏：城市切换胶囊 + 刷新按钮
+            // 顶栏：城市切换胶囊 + GPS 定位按钮 + 刷新按钮
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -129,22 +135,44 @@ fun WeatherScreen(
                     )
                 }
 
-                // 刷新操作
-                IconButton(
-                    onClick = { viewModel.refreshWeather() }
-                ) {
-                    if (isRefreshing) {
-                        CircularProgressIndicator(
-                            color = TextWhitePrimary,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Outlined.Refresh,
-                            contentDescription = "刷新天气",
-                            tint = TextWhitePrimary
-                        )
+                // 右侧操作栏：GPS 定位按钮 + 刷新按钮
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // 1. 独立 GPS 定位按钮
+                    IconButton(
+                        onClick = { viewModel.locateCurrentCity(context, onRequestLocationPermission) }
+                    ) {
+                        if (isLocating) {
+                            CircularProgressIndicator(
+                                color = TextWhitePrimary,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Outlined.MyLocation,
+                                contentDescription = "GPS 定位当前城市",
+                                tint = TextWhitePrimary
+                            )
+                        }
+                    }
+
+                    // 2. 刷新按钮
+                    IconButton(
+                        onClick = { viewModel.refreshWeather() }
+                    ) {
+                        if (isRefreshing) {
+                            CircularProgressIndicator(
+                                color = TextWhitePrimary,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Outlined.Refresh,
+                                contentDescription = "刷新天气",
+                                tint = TextWhitePrimary
+                            )
+                        }
                     }
                 }
             }
@@ -186,7 +214,11 @@ fun WeatherScreen(
             onDismiss = { showCityDialog = false },
             onSelectCity = { city ->
                 viewModel.selectCity(city)
-            }
+            },
+            onLocateClick = {
+                viewModel.locateCurrentCity(context, onRequestLocationPermission)
+            },
+            isLocating = isLocating
         )
     }
 }

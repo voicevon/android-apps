@@ -12,19 +12,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -47,7 +45,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.minimal.todo.data.TodoItem
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -120,37 +117,9 @@ fun TodoCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Minimal-Todo 经典圆形色彩标识
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(if (todo.isCompleted) Color.Gray else badgeColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (todo.isCompleted) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Completed",
-                            tint = Color.White,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    } else {
-                        val initial = todo.title.firstOrNull()?.uppercaseChar()?.toString() ?: ""
-                        Text(
-                            text = initial,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.Center
@@ -204,17 +173,7 @@ fun TodoCard(
                     }
                 }
 
-                // 勾选框
-                Checkbox(
-                    checked = todo.isCompleted,
-                    onCheckedChange = { onToggleComplete() },
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = badgeColor,
-                        uncheckedColor = MaterialTheme.colorScheme.outline
-                    )
-                )
-
-                // 排序手柄及上下调整菜单
+                // 弹出菜单按钮（等号双杠图标），使用当前待办项的颜色 (badgeColor) 来直观标识颜色
                 Box {
                     IconButton(
                         onClick = { showMenu = true },
@@ -222,8 +181,9 @@ fun TodoCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.DragHandle,
-                            contentDescription = "调整上下顺序",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            contentDescription = "操作菜单",
+                            tint = badgeColor,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
 
@@ -231,6 +191,23 @@ fun TodoCard(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
+                        // 1. 完成状态切换（干完 / 没干完）
+                        DropdownMenuItem(
+                            text = { Text(if (todo.isCompleted) "标记为未完成" else "标记为已完成") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (todo.isCompleted) Icons.Default.Close else Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = if (todo.isCompleted) MaterialTheme.colorScheme.outline else badgeColor
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                onToggleComplete()
+                            }
+                        )
+
+                        // 2. 上移一项
                         DropdownMenuItem(
                             text = { Text("上移一项") },
                             leadingIcon = {
@@ -242,6 +219,8 @@ fun TodoCard(
                                 onMoveUp?.invoke()
                             }
                         )
+
+                        // 3. 下移一项
                         DropdownMenuItem(
                             text = { Text("下移一项") },
                             leadingIcon = {

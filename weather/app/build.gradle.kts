@@ -65,6 +65,9 @@ dependencies {
     // Lightweight HTTP Client
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // WorkManager for background scheduled updates
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
