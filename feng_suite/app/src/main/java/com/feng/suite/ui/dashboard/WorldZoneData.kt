@@ -7,7 +7,7 @@ data class WorldZone(
     val zoneId: String        // 时区 ID
 )
 
-val EXTENDED_WORLD_ZONES = listOf(
+val SELECTABLE_WORLD_ZONES = listOf(
     // 亚太地区 - 东亚 & 港澳台
     WorldZone("北京", "Beijing", "中国", "Asia/Shanghai"),
     WorldZone("上海", "Shanghai", "中国", "Asia/Shanghai"),
@@ -24,7 +24,7 @@ val EXTENDED_WORLD_ZONES = listOf(
     WorldZone("吉隆坡", "Kuala Lumpur", "马来西亚", "Asia/Kuala_Lumpur"),
     WorldZone("雅加达", "Jakarta", "印度尼西亚", "Asia/Jakarta"),
     WorldZone("马尼拉", "Manila", "菲律宾", "Asia/Manila"),
-    WorldZone("河内", "Hanoi", "越南", "Asia/Bangkok"),
+    WorldZone("河内", "Hanoi", "越南", "Asia/Ho_Chi_Minh"),
     WorldZone("胡志明市", "Ho Chi Minh City", "越南", "Asia/Ho_Chi_Minh"),
     WorldZone("新德里", "New Delhi", "印度", "Asia/Kolkata"),
     WorldZone("孟买", "Mumbai", "印度", "Asia/Kolkata"),
@@ -71,7 +71,7 @@ val EXTENDED_WORLD_ZONES = listOf(
     WorldZone("里斯本", "Lisbon", "葡萄牙", "Europe/Lisbon"),
     WorldZone("都柏林", "Dublin", "爱尔兰", "Europe/Dublin"),
     WorldZone("雷克雅未克", "Reykjavik", "冰岛", "Atlantic/Reykjavik"),
-    WorldZone("基辅", "Kyiv", "乌克兰", "Europe/Kyiv"),
+    WorldZone("基辅", "Kyiv", "乌克兰", "Europe/Kiev"), // Europe/Kyiv 在 API 26-28 旧 tzdata 中不存在，会静默变为 GMT
 
     // 北美洲主要城市
     WorldZone("纽约", "New York", "美国", "America/New_York"),
@@ -90,7 +90,7 @@ val EXTENDED_WORLD_ZONES = listOf(
     WorldZone("拉斯维加斯", "Las Vegas", "美国", "America/Los_Angeles"),
     WorldZone("多伦多", "Toronto", "加拿大", "America/Toronto"),
     WorldZone("温哥华", "Vancouver", "加拿大", "America/Vancouver"),
-    WorldZone("蒙特利尔", "Montreal", "加拿大", "America/Montreal"),
+    WorldZone("蒙特利尔", "Montreal", "加拿大", "America/Toronto"),
     WorldZone("墨西哥城", "Mexico City", "墨西哥", "America/Mexico_City"),
     WorldZone("檀香山", "Honolulu", "美国夏威夷", "Pacific/Honolulu"),
     WorldZone("安克雷奇", "Anchorage", "美国阿拉斯加", "America/Anchorage"),

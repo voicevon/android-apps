@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.feng.suite.feature.clock.ui.screens.AlarmScreen
@@ -72,7 +73,7 @@ private fun MainContainerScreen(
     todoViewModel: TodoViewModel,
     onRequestLocationPermission: () -> Unit
 ) {
-    var currentItem by remember { mutableStateOf(NavItem.DASHBOARD) }
+    var currentItem by rememberSaveable { mutableStateOf(NavItem.DASHBOARD) }
 
     // 拦截返回事件：子页面返回 Dashboard，Dashboard 再次返回则退出应用
     BackHandler(enabled = currentItem != NavItem.DASHBOARD) {

@@ -1,11 +1,9 @@
 package com.feng.suite.ui.dashboard
 
 import android.content.Context
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,8 +13,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,10 +26,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.feng.suite.feature.clock.data.AlarmEntity
 import com.feng.suite.feature.clock.ui.viewmodel.AlarmViewModel
+import com.feng.suite.feature.todo.data.TodoItem
 import com.feng.suite.feature.todo.ui.TodoViewModel
+import com.feng.suite.feature.todo.ui.components.ColorFilterBar
 import com.feng.suite.feature.weather.data.WeatherCodeMapper
 import com.feng.suite.feature.weather.ui.viewmodel.WeatherUiState
 import com.feng.suite.feature.weather.ui.viewmodel.WeatherViewModel
@@ -40,12 +43,6 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
 
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.ui.text.style.TextAlign
-
-
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DashboardScreen(
     weatherViewModel: WeatherViewModel,
@@ -58,16 +55,16 @@ fun DashboardScreen(
     val prefs = remember { context.getSharedPreferences("feng_dashboard_prefs", Context.MODE_PRIVATE) }
 
     var zone1Id by remember {
-        mutableStateOf(prefs.getString("second_zone_1_id", prefs.getString("second_zone_id", "America/Los_Angeles")) ?: "America/Los_Angeles")
+        mutableStateOf(prefs.getString("world_clock_1_id", "America/Los_Angeles") ?: "America/Los_Angeles")
     }
     var zone1Name by remember {
-        mutableStateOf(prefs.getString("second_zone_1_name", prefs.getString("second_zone_name", "旧金山")) ?: "旧金山")
+        mutableStateOf(prefs.getString("world_clock_1_name", "旧金山") ?: "旧金山")
     }
     var zone2Id by remember {
-        mutableStateOf(prefs.getString("second_zone_2_id", "Europe/Berlin") ?: "Europe/Berlin")
+        mutableStateOf(prefs.getString("world_clock_2_id", "Europe/Berlin") ?: "Europe/Berlin")
     }
     var zone2Name by remember {
-        mutableStateOf(prefs.getString("second_zone_2_name", "柏林") ?: "柏林")
+        mutableStateOf(prefs.getString("world_clock_2_name", "柏林") ?: "柏林")
     }
     var editingZoneIndex by remember { mutableStateOf<Int?>(null) }
 
@@ -76,24 +73,21 @@ fun DashboardScreen(
     val alarms by alarmViewModel.alarms.collectAsState()
     val allTodos by todoViewModel.allTodos.collectAsState()
 
-    // 动态时间走秒刷新
-    var monthDayText by remember { mutableStateOf(getMonthDayString()) }
-    var weekdayText by remember { mutableStateOf(getWeekdayString()) }
-    var zone1TimeText by remember { mutableStateOf(getWorldTimeString(zone1Id)) }
-    var zone2TimeText by remember { mutableStateOf(getWorldTimeString(zone2Id)) }
-
-    LaunchedEffect(zone1Id, zone2Id) {
+    // 按整分钟刷新（界面只显示到分钟），所有依赖当前时间的内容均从 nowMillis 派生
+    var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
         while (true) {
-            monthDayText = getMonthDayString()
-            weekdayText = getWeekdayString()
-            zone1TimeText = getWorldTimeString(zone1Id)
-            zone2TimeText = getWorldTimeString(zone2Id)
-            delay(1000L)
+            delay(60_000L - System.currentTimeMillis() % 60_000L)
+            nowMillis = System.currentTimeMillis()
         }
     }
+    val monthDayText = remember(nowMillis) { getMonthDayString(nowMillis) }
+    val weekdayText = remember(nowMillis) { getWeekdayString(nowMillis) }
+    val zone1TimeText = remember(nowMillis, zone1Id) { getWorldTimeString(zone1Id, nowMillis) }
+    val zone2TimeText = remember(nowMillis, zone2Id) { getWorldTimeString(zone2Id, nowMillis) }
 
     var selectedTodoColor by remember { mutableStateOf<String?>(null) }
-    val activeTodos = allTodos.filter { !it.isCompleted }
+    val activeTodos = remember(allTodos) { allTodos.filter { !it.isCompleted } }
     val filteredTodos = remember(activeTodos, selectedTodoColor) {
         if (selectedTodoColor == null) {
             activeTodos
@@ -103,9 +97,10 @@ fun DashboardScreen(
     }
 
     // 筛选已开启并按最快发生时间排序的前 2 个闹钟
-    val upcomingAlarms = remember(alarms) {
+    val upcomingAlarms = remember(alarms, nowMillis) {
         alarms.filter { it.isEnabled }
-            .sortedBy { it.calculateNextTriggerTime() }
+            .map { it to it.calculateNextTriggerTime(nowMillis) }
+            .sortedBy { it.second }
             .take(2)
     }
 
@@ -175,7 +170,7 @@ fun DashboardScreen(
 
             DashboardAlarmCard(
                 upcomingAlarms = upcomingAlarms,
-                onToggleEnabled = { alarm -> alarmViewModel.toggleAlarm(alarm) },
+                nowMillis = nowMillis,
                 onClick = { onNavigateTo(NavItem.CLOCK) },
                 modifier = Modifier
                     .weight(1f)
@@ -203,9 +198,9 @@ fun DashboardScreen(
         val filteredZones = remember(searchQuery) {
             val q = searchQuery.trim().lowercase()
             if (q.isEmpty()) {
-                EXTENDED_WORLD_ZONES
+                SELECTABLE_WORLD_ZONES
             } else {
-                EXTENDED_WORLD_ZONES.filter { zone ->
+                SELECTABLE_WORLD_ZONES.filter { zone ->
                     zone.name.lowercase().contains(q) ||
                     zone.nameEn.lowercase().contains(q) ||
                     zone.country.lowercase().contains(q) ||
@@ -315,15 +310,15 @@ fun DashboardScreen(
                                                 zone1Id = zone.zoneId
                                                 zone1Name = zone.name
                                                 prefs.edit()
-                                                    .putString("second_zone_1_id", zone.zoneId)
-                                                    .putString("second_zone_1_name", zone.name)
+                                                    .putString("world_clock_1_id", zone.zoneId)
+                                                    .putString("world_clock_1_name", zone.name)
                                                     .apply()
                                             } else {
                                                 zone2Id = zone.zoneId
                                                 zone2Name = zone.name
                                                 prefs.edit()
-                                                    .putString("second_zone_2_id", zone.zoneId)
-                                                    .putString("second_zone_2_name", zone.name)
+                                                    .putString("world_clock_2_id", zone.zoneId)
+                                                    .putString("world_clock_2_name", zone.name)
                                                     .apply()
                                             }
                                             editingZoneIndex = null
@@ -487,7 +482,32 @@ private fun DashboardWeatherCard(
                     }
                 }
             }
-            else -> {
+            is WeatherUiState.Error -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.CloudOff,
+                        contentDescription = null,
+                        tint = Color(0xFFFCA5A5),
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "天气获取失败",
+                        fontSize = 12.sp,
+                        color = TextWhiteSecondary
+                    )
+                    Text(
+                        text = "点击查看详情",
+                        fontSize = 11.sp,
+                        color = TextWhiteSecondary.copy(alpha = 0.6f)
+                    )
+                }
+            }
+            WeatherUiState.Loading -> {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
@@ -511,12 +531,13 @@ private fun DashboardWeatherCard(
 }
 
 /**
- * 紧凑型闹钟方块卡片 (占半屏宽，展示最快触发的最多两个闹钟，带今天/明天标记)
+ * 紧凑型闹钟方块卡片 (占半屏宽，展示最快触发的最多两个闹钟，带今天/明天/周X标记)
+ * upcomingAlarms: (闹钟, 下次触发时间戳) 列表
  */
 @Composable
 private fun DashboardAlarmCard(
-    upcomingAlarms: List<com.feng.suite.feature.clock.data.AlarmEntity>,
-    onToggleEnabled: (com.feng.suite.feature.clock.data.AlarmEntity) -> Unit,
+    upcomingAlarms: List<Pair<AlarmEntity, Long>>,
+    nowMillis: Long,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -532,55 +553,40 @@ private fun DashboardAlarmCard(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // 第一行：时钟图标 + 紧凑 Switch 开关
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // 第一行：时钟图标（开关操作请进入闹钟页）
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .background(PrimaryPurple.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(30.dp)
-                        .clip(CircleShape)
-                        .background(PrimaryPurple.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Alarm,
-                        contentDescription = null,
-                        tint = PrimaryPurple,
-                        modifier = Modifier.size(17.dp)
-                    )
-                }
-
-                val firstAlarm = upcomingAlarms.firstOrNull()
-                if (firstAlarm != null) {
-                    Switch(
-                        checked = firstAlarm.isEnabled,
-                        onCheckedChange = { onToggleEnabled(firstAlarm) },
-                        modifier = Modifier.height(24.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Filled.Alarm,
+                    contentDescription = null,
+                    tint = PrimaryPurple,
+                    modifier = Modifier.size(17.dp)
+                )
             }
 
-            // 第二行：闹钟列表（最多显示两行，带今天/明天微小暗标）
+            // 第二行：闹钟列表（最多显示两行，带今天/明天/周X微小暗标）
             if (upcomingAlarms.isNotEmpty()) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
-                    upcomingAlarms.forEach { alarm ->
+                    upcomingAlarms.forEach { (alarm, triggerAtMillis) ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = String.format("%02d:%02d", alarm.hour, alarm.minute),
+                                text = String.format(Locale.ROOT, "%02d:%02d", alarm.hour, alarm.minute),
                                 fontSize = 19.sp,
                                 fontWeight = FontWeight.Normal,
                                 color = TextWhitePrimary.copy(alpha = 0.9f)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = getAlarmDayTag(alarm.calculateNextTriggerTime()),
+                                text = getAlarmDayTag(triggerAtMillis, nowMillis),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Normal,
                                 color = TextWhiteSecondary.copy(alpha = 0.55f)
@@ -600,31 +606,15 @@ private fun DashboardAlarmCard(
     }
 }
 
-private data class FilterColorOption(
-    val hex: String?,
-    val color: Color,
-    val name: String
-)
-
 @Composable
 private fun DashboardTodoCard(
     selectedColor: String?,
     onSelectColor: (String?) -> Unit,
-    todoList: List<com.feng.suite.feature.todo.data.TodoItem>,
+    todoList: List<TodoItem>,
     hasAnyTodos: Boolean,
-    onToggleComplete: (com.feng.suite.feature.todo.data.TodoItem) -> Unit,
+    onToggleComplete: (TodoItem) -> Unit,
     onClick: () -> Unit
 ) {
-    val filterColors = remember {
-        listOf(
-            FilterColorOption(null, Color.White, "全部"),
-            FilterColorOption("#2563EB", Color(0xFF2563EB), "蓝色"),
-            FilterColorOption("#16A34A", Color(0xFF16A34A), "绿色"),
-            FilterColorOption("#DC2626", Color(0xFFDC2626), "红色"),
-            FilterColorOption("#D97706", Color(0xFFD97706), "黄色")
-        )
-    }
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -635,69 +625,11 @@ private fun DashboardTodoCard(
             .padding(16.dp)
     ) {
         Column {
-            // 第一行：纯颜色过滤器（白色/全部、蓝色、绿色、红色、黄色），彻底移除原有文字与统计
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                filterColors.forEach { option ->
-                    val isSelected = if (option.hex == null) {
-                        selectedColor == null
-                    } else {
-                        selectedColor.equals(option.hex, ignoreCase = true)
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (isSelected) option.color.copy(alpha = 0.18f)
-                                else Color.Transparent
-                            )
-                            .border(
-                                width = if (isSelected) 1.5.dp else 0.dp,
-                                color = if (isSelected) option.color else Color.Transparent,
-                                shape = CircleShape
-                            )
-                            .clickable {
-                                if (option.hex == null) {
-                                    onSelectColor(null)
-                                } else {
-                                    if (selectedColor.equals(option.hex, ignoreCase = true)) {
-                                        onSelectColor(null)
-                                    } else {
-                                        onSelectColor(option.hex)
-                                    }
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clip(CircleShape)
-                                .background(option.color)
-                                .border(
-                                    width = 1.dp,
-                                    color = if (option.color == Color.White) Color(0xFFCBD5E1) else Color.Transparent,
-                                    shape = CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (isSelected) {
-                                Icon(
-                                    imageVector = Icons.Filled.Check,
-                                    contentDescription = option.name,
-                                    tint = if (option.color == Color.White || option.color == Color(0xFFD97706)) Color(0xFF1E293B) else Color.White,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            // 第一行：纯颜色过滤器，复用待办页同一组件（颜色来源 TagColors）
+            ColorFilterBar(
+                selectedColorHex = selectedColor,
+                onSelectColor = onSelectColor
+            )
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -723,30 +655,25 @@ private fun DashboardTodoCard(
                     }
 
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 5.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // 32dp 点击区包裹 18dp 可视勾选框，降低误触卡片跳转的概率
                         Box(
                             modifier = Modifier
-                                .size(18.dp)
-                                .clip(RoundedCornerShape(5.dp))
-                                .border(1.5.dp, color, RoundedCornerShape(5.dp))
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(8.dp))
                                 .clickable { onToggleComplete(todo) },
                             contentAlignment = Alignment.Center
                         ) {
-                            if (todo.isCompleted) {
-                                Icon(
-                                    imageVector = Icons.Filled.Check,
-                                    contentDescription = null,
-                                    tint = color,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .border(1.5.dp, color, RoundedCornerShape(5.dp))
+                            )
                         }
 
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
 
                         Text(
                             text = todo.title,
@@ -762,16 +689,11 @@ private fun DashboardTodoCard(
     }
 }
 
-private fun getLocalTimeString(): String {
-    val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
-    return sdf.format(Date())
-}
-
-private fun getWorldTimeString(zoneId: String): String {
+private fun getWorldTimeString(zoneId: String, nowMillis: Long): String {
     val sdf = SimpleDateFormat("HH:mm", Locale.getDefault()).apply {
         timeZone = TimeZone.getTimeZone(zoneId)
     }
-    return sdf.format(Date())
+    return sdf.format(Date(nowMillis))
 }
 
 private fun getZoneTimeAndOffset(zoneId: String): Pair<String, String> {
@@ -786,29 +708,28 @@ private fun getZoneTimeAndOffset(zoneId: String): Pair<String, String> {
 
     val localOffset = localTz.getOffset(now)
     val targetOffset = targetTz.getOffset(now)
-    val diffHours = (targetOffset - localOffset) / (1000 * 3600)
+    // 按分钟计算，支持 +5:30、+9:30 等半小时时区
+    val diffMinutes = (targetOffset - localOffset) / (1000 * 60)
+    val absHours = kotlin.math.abs(diffMinutes) / 60
+    val absMinutes = kotlin.math.abs(diffMinutes) % 60
+    val amount = if (absMinutes == 0) "${absHours}h" else "${absHours}h${absMinutes}m"
 
     val offsetStr = when {
-        diffHours == 0 -> "与本地同时"
-        diffHours > 0 -> "快 ${diffHours}h"
-        else -> "慢 ${-diffHours}h"
+        diffMinutes == 0 -> "与本地同时"
+        diffMinutes > 0 -> "快 $amount"
+        else -> "慢 $amount"
     }
     return Pair(timeStr, offsetStr)
 }
 
-private fun getCurrentDateString(): String {
-    val sdf = SimpleDateFormat("M月d日 EEEE", Locale.CHINESE)
-    return sdf.format(Date())
-}
-
-private fun getMonthDayString(): String {
+private fun getMonthDayString(nowMillis: Long): String {
     val sdf = SimpleDateFormat("M月d日", Locale.CHINESE)
-    return sdf.format(Date())
+    return sdf.format(Date(nowMillis))
 }
 
-private fun getWeekdayString(): String {
+private fun getWeekdayString(nowMillis: Long): String {
     val sdf = SimpleDateFormat("EEEE", Locale.CHINESE)
-    return sdf.format(Date())
+    return sdf.format(Date(nowMillis))
 }
 
 /**
@@ -819,17 +740,23 @@ private fun formatZoneCityName(name: String): String {
 }
 
 /**
- * 计算闹钟下一次响铃是今天还是明天
+ * 计算闹钟下一次响铃日标签：今天 / 明天 / 周X（重复闹钟最远 7 天内）
  */
-private fun getAlarmDayTag(triggerTimeMillis: Long): String {
-    val now = Calendar.getInstance()
-    val target = Calendar.getInstance().apply { timeInMillis = triggerTimeMillis }
-    return if (now.get(Calendar.YEAR) == target.get(Calendar.YEAR) &&
-        now.get(Calendar.DAY_OF_YEAR) == target.get(Calendar.DAY_OF_YEAR)
-    ) {
-        "今天"
-    } else {
-        "明天"
+private fun getAlarmDayTag(triggerTimeMillis: Long, nowMillis: Long): String {
+    fun startOfDay(millis: Long): Long = Calendar.getInstance().apply {
+        timeInMillis = millis
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    // 四舍五入以吸收夏令时切换日的 23h/25h
+    val dayDiff = Math.round((startOfDay(triggerTimeMillis) - startOfDay(nowMillis)) / 86_400_000.0)
+    return when (dayDiff) {
+        0L -> "今天"
+        1L -> "明天"
+        else -> SimpleDateFormat("EEE", Locale.CHINESE).format(Date(triggerTimeMillis))
     }
 }
 
