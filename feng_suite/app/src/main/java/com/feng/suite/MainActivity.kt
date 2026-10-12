@@ -3,6 +3,7 @@ package com.feng.suite
 import android.Manifest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -73,35 +74,13 @@ private fun MainContainerScreen(
 ) {
     var currentItem by remember { mutableStateOf(NavItem.DASHBOARD) }
 
+    // 拦截返回事件：子页面返回 Dashboard，Dashboard 再次返回则退出应用
+    BackHandler(enabled = currentItem != NavItem.DASHBOARD) {
+        currentItem = NavItem.DASHBOARD
+    }
+
     Scaffold(
-        bottomBar = {
-            NavigationBar(
-                containerColor = Color(0xFF0F172A),
-                contentColor = Color.White
-            ) {
-                NavItem.entries.forEach { item ->
-                    val selected = currentItem == item
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = { currentItem = item },
-                        icon = {
-                            Icon(
-                                imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                contentDescription = item.title
-                            )
-                        },
-                        label = { Text(item.title) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color.White,
-                            selectedTextColor = Color(0xFF81D4FA),
-                            indicatorColor = Color(0xFF2563EB).copy(alpha = 0.4f),
-                            unselectedIconColor = Color(0xFF94A3B8),
-                            unselectedTextColor = Color(0xFF94A3B8)
-                        )
-                    )
-                }
-            }
-        }
+        containerColor = BackgroundDark
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -118,14 +97,17 @@ private fun MainContainerScreen(
                         onNavigateTo = { currentItem = it }
                     )
                     NavItem.CLOCK -> AlarmScreen(
-                        viewModel = alarmViewModel
+                        viewModel = alarmViewModel,
+                        onBack = { currentItem = NavItem.DASHBOARD }
                     )
                     NavItem.WEATHER -> WeatherScreen(
                         viewModel = weatherViewModel,
-                        onRequestLocationPermission = onRequestLocationPermission
+                        onRequestLocationPermission = onRequestLocationPermission,
+                        onBack = { currentItem = NavItem.DASHBOARD }
                     )
                     NavItem.TODO -> TodoListScreen(
-                        viewModel = todoViewModel
+                        viewModel = todoViewModel,
+                        onBack = { currentItem = NavItem.DASHBOARD }
                     )
                 }
             }
