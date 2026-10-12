@@ -26,92 +26,118 @@ import com.feng.suite.ui.theme.TagColors
 fun ColorFilterBar(
     selectedColorHex: String?,
     onSelectColor: (String?) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    trailingContent: (@Composable () -> Unit)? = null
 ) {
-    // 5 个圆形紧凑并排：白色 (代表全部/全选) + 蓝、绿、黄、红 4 种颜色
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
+    if (trailingContent == null) {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ColorFilterButtons(selectedColorHex = selectedColorHex, onSelectColor = onSelectColor)
+        }
+    } else {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ColorFilterButtons(selectedColorHex = selectedColorHex, onSelectColor = onSelectColor)
+            }
+            trailingContent()
+        }
+    }
+}
+
+@Composable
+private fun ColorFilterButtons(
+    selectedColorHex: String?,
+    onSelectColor: (String?) -> Unit
+) {
+    // 1. 全部 (白色圆点，不带文字)
+    val isAllSelected = selectedColorHex == null
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .clip(CircleShape)
+            .background(
+                if (isAllSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                else Color.Transparent
+            )
+            .border(
+                width = if (isAllSelected) 2.dp else 0.dp,
+                color = if (isAllSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                shape = CircleShape
+            )
+            .clickable { onSelectColor(null) },
+        contentAlignment = Alignment.Center
     ) {
-        // 1. 全部 (白色圆点，不带文字)
-        val isAllSelected = selectedColorHex == null
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .clip(CircleShape)
+                .background(Color.White)
+                .border(1.dp, Color(0xFFCCCCCC), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isAllSelected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "全选",
+                    tint = Color(0xFF333333),
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+    }
+
+    // 2. 蓝、绿、黄、红 4 种颜色
+    TagColors.forEach { colorHex ->
+        val isSelected = selectedColorHex.equals(colorHex, ignoreCase = true)
+        val parsedColor = runCatching { Color(android.graphics.Color.parseColor(colorHex)) }
+            .getOrDefault(Color.Gray)
+
         Box(
             modifier = Modifier
                 .size(34.dp)
                 .clip(CircleShape)
                 .background(
-                    if (isAllSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    if (isSelected) parsedColor.copy(alpha = 0.2f)
                     else Color.Transparent
                 )
                 .border(
-                    width = if (isAllSelected) 2.dp else 0.dp,
-                    color = if (isAllSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    width = if (isSelected) 2.dp else 0.dp,
+                    color = if (isSelected) parsedColor else Color.Transparent,
                     shape = CircleShape
                 )
-                .clickable { onSelectColor(null) },
+            .clickable {
+                if (isSelected) onSelectColor(null) else onSelectColor(colorHex)
+            },
             contentAlignment = Alignment.Center
         ) {
             Box(
                 modifier = Modifier
                     .size(22.dp)
                     .clip(CircleShape)
-                    .background(Color.White)
-                    .border(1.dp, Color(0xFFCCCCCC), CircleShape),
+                    .background(parsedColor),
                 contentAlignment = Alignment.Center
             ) {
-                if (isAllSelected) {
+                if (isSelected) {
                     Icon(
                         imageVector = Icons.Default.Check,
-                        contentDescription = "全选",
-                        tint = Color(0xFF333333),
+                        contentDescription = "已选择",
+                        tint = if (colorHex == "#FFEA00" || colorHex == "#FFD600") Color.Black else Color.White,
                         modifier = Modifier.size(14.dp)
                     )
-                }
-            }
-        }
-
-        // 2. 蓝、绿、黄、红 4 种颜色
-        TagColors.forEach { colorHex ->
-            val isSelected = selectedColorHex.equals(colorHex, ignoreCase = true)
-            val parsedColor = runCatching { Color(android.graphics.Color.parseColor(colorHex)) }
-                .getOrDefault(Color.Gray)
-
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (isSelected) parsedColor.copy(alpha = 0.2f)
-                        else Color.Transparent
-                    )
-                    .border(
-                        width = if (isSelected) 2.dp else 0.dp,
-                        color = if (isSelected) parsedColor else Color.Transparent,
-                        shape = CircleShape
-                    )
-                    .clickable {
-                        if (isSelected) onSelectColor(null) else onSelectColor(colorHex)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(22.dp)
-                        .clip(CircleShape)
-                        .background(parsedColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isSelected) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "已选择",
-                            tint = if (colorHex == "#FFEA00" || colorHex == "#FFD600") Color.Black else Color.White,
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
                 }
             }
         }

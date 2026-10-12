@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Public
@@ -33,6 +34,7 @@ import com.feng.suite.feature.clock.data.AlarmEntity
 import com.feng.suite.feature.clock.ui.viewmodel.AlarmViewModel
 import com.feng.suite.feature.todo.data.TodoItem
 import com.feng.suite.feature.todo.ui.TodoViewModel
+import com.feng.suite.feature.todo.ui.components.AddEditTodoDialog
 import com.feng.suite.feature.todo.ui.components.ColorFilterBar
 import com.feng.suite.feature.weather.data.WeatherCodeMapper
 import com.feng.suite.feature.weather.ui.viewmodel.WeatherUiState
@@ -86,7 +88,17 @@ fun DashboardScreen(
     val zone1TimeText = remember(nowMillis, zone1Id) { getWorldTimeString(zone1Id, nowMillis) }
     val zone2TimeText = remember(nowMillis, zone2Id) { getWorldTimeString(zone2Id, nowMillis) }
 
-    var selectedTodoColor by remember { mutableStateOf<String?>(null) }
+    // 选中的待办颜色过滤器持久化：默认不为白色（默认蓝色），若用户曾经选过白色则恢复白色，若选过其他颜色则恢复该颜色
+    val savedTodoColor = remember { prefs.getString("selected_todo_color", TagColors.first()) ?: TagColors.first() }
+    var selectedTodoColor by remember {
+        mutableStateOf<String?>(if (savedTodoColor == "ALL") null else savedTodoColor)
+    }
+    val onSelectTodoColor: (String?) -> Unit = { newColor ->
+        selectedTodoColor = newColor
+        prefs.edit().putString("selected_todo_color", newColor ?: "ALL").apply()
+    }
+    var showAddTodoDialog by remember { mutableStateOf(false) }
+
     val activeTodos = remember(allTodos) { allTodos.filter { !it.isCompleted } }
     val filteredTodos = remember(activeTodos, selectedTodoColor) {
         if (selectedTodoColor == null) {
@@ -178,17 +190,37 @@ fun DashboardScreen(
             )
         }
 
-        // 3. 第二行：今日待办聚焦卡片 (100% 全宽，顶部为颜色过滤器)
+        // 3. 第二行：今日待办聚焦卡片 (100% 全宽，顶部为颜色过滤器与加号胶囊)
         DashboardTodoCard(
             selectedColor = selectedTodoColor,
-            onSelectColor = { color -> selectedTodoColor = color },
+            onSelectColor = onSelectTodoColor,
             todoList = filteredTodos.take(4),
             hasAnyTodos = allTodos.isNotEmpty(),
             onToggleComplete = { todo -> todoViewModel.toggleCompleted(todo) },
+            onAddTodo = { showAddTodoDialog = true },
             onClick = { onNavigateTo(NavItem.TODO) }
         )
 
         Spacer(modifier = Modifier.height(20.dp))
+    }
+
+    // 快捷新建任务弹窗
+    if (showAddTodoDialog) {
+        AddEditTodoDialog(
+            initialTodo = null,
+            initialColorHex = selectedTodoColor,
+            onDismiss = { showAddTodoDialog = false },
+            onConfirm = { title, desc, hasReminder, reminderTime, colorHex ->
+                todoViewModel.addTodo(
+                    title = title,
+                    description = desc,
+                    hasReminder = hasReminder,
+                    reminderTime = reminderTime,
+                    colorHex = colorHex
+                )
+                showAddTodoDialog = false
+            }
+        )
     }
 
     // 双外地时区切换选择弹窗
@@ -613,6 +645,7 @@ private fun DashboardTodoCard(
     todoList: List<TodoItem>,
     hasAnyTodos: Boolean,
     onToggleComplete: (TodoItem) -> Unit,
+    onAddTodo: () -> Unit,
     onClick: () -> Unit
 ) {
     Box(
@@ -625,10 +658,28 @@ private fun DashboardTodoCard(
             .padding(16.dp)
     ) {
         Column {
-            // 第一行：纯颜色过滤器，复用待办页同一组件（颜色来源 TagColors）
+            // 第一行：纯颜色过滤器 + 最右侧胶囊加号新建任务按钮
             ColorFilterBar(
                 selectedColorHex = selectedColor,
-                onSelectColor = onSelectColor
+                onSelectColor = onSelectColor,
+                trailingContent = {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color.White.copy(alpha = 0.12f))
+                            .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+                            .clickable(onClick = onAddTodo)
+                            .padding(horizontal = 11.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "新建待办任务",
+                            tint = TextWhitePrimary,
+                            modifier = Modifier.size(17.dp)
+                        )
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.height(12.dp))

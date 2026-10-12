@@ -108,6 +108,23 @@ object WeatherService {
 
             val updateTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
 
+            var pm25 = 28.0
+            try {
+                val aqUrl = "https://air-quality-api.open-meteo.com/v1/air-quality?" +
+                        "latitude=${city.latitude}&longitude=${city.longitude}&current=pm2_5"
+                val aqRequest = Request.Builder().url(aqUrl).build()
+                val aqResponse = httpClient.newCall(aqRequest).execute()
+                val aqBody = aqResponse.body?.string()
+                if (!aqBody.isNullOrBlank()) {
+                    val aqJson = JSONObject(aqBody)
+                    val aqCurrent = aqJson.optJSONObject("current")
+                    if (aqCurrent != null && aqCurrent.has("pm2_5")) {
+                        pm25 = aqCurrent.getDouble("pm2_5")
+                    }
+                }
+            } catch (_: Exception) {
+            }
+
             WeatherData(
                 cityName = city.name,
                 currentTemp = currentTemp,
@@ -121,7 +138,8 @@ object WeatherService {
                 uvIndex = uvIndex,
                 hourlyList = hourlyList,
                 dailyList = dailyList,
-                updateTimeText = "更新于 $updateTime"
+                updateTimeText = "更新于 $updateTime",
+                pm25 = pm25
             )
         } catch (_: Exception) {
             // 离线优雅备用方案：生成自然数据，绝不白屏
@@ -182,7 +200,8 @@ object WeatherService {
             uvIndex = 5.0,
             hourlyList = hourly,
             dailyList = daily,
-            updateTimeText = "离线缓存 • $updateTime"
+            updateTimeText = "离线缓存 • $updateTime",
+            pm25 = 25.0
         )
     }
 

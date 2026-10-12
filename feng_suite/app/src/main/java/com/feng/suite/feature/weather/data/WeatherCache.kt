@@ -47,6 +47,52 @@ object WeatherCache {
         return prefs.getLong(KEY_LAST_UPDATE_TIME, 0L)
     }
 
+    private const val KEY_LOCAL_CITY = "local_city"
+    private const val KEY_CUSTOM_CITIES = "custom_weather_cities"
+
+    val DEFAULT_CUSTOM_CITIES = listOf(
+        City("郑州", 34.7466, 113.6253, "河南省"),
+        City("开封", 34.7972, 114.3075, "河南省")
+    )
+
+    fun saveLocalCity(context: Context, city: City) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_LOCAL_CITY, serializeCity(city).toString()).apply()
+    }
+
+    fun getLocalCity(context: Context): City {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val cityStr = prefs.getString(KEY_LOCAL_CITY, null)
+        if (cityStr != null) {
+            try {
+                return deserializeCity(JSONObject(cityStr))
+            } catch (_: Exception) {}
+        }
+        return getCachedCity(context) ?: City("济南", 36.6512, 117.1201, "山东省")
+    }
+
+    fun saveCustomCities(context: Context, cities: List<City>) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val array = JSONArray()
+        cities.forEach { array.put(serializeCity(it)) }
+        prefs.edit().putString(KEY_CUSTOM_CITIES, array.toString()).apply()
+    }
+
+    fun getCustomCities(context: Context): List<City> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val str = prefs.getString(KEY_CUSTOM_CITIES, null) ?: return DEFAULT_CUSTOM_CITIES
+        return try {
+            val array = JSONArray(str)
+            val list = mutableListOf<City>()
+            for (i in 0 until array.length()) {
+                list.add(deserializeCity(array.getJSONObject(i)))
+            }
+            if (list.isEmpty()) DEFAULT_CUSTOM_CITIES else list
+        } catch (_: Exception) {
+            DEFAULT_CUSTOM_CITIES
+        }
+    }
+
     fun isCacheFresh(context: Context): Boolean {
         val lastTime = getLastUpdateTime(context)
         if (lastTime <= 0L) return false
@@ -85,6 +131,7 @@ object WeatherCache {
         json.put("pressure", weather.pressure)
         json.put("uvIndex", weather.uvIndex)
         json.put("updateTimeText", weather.updateTimeText)
+        json.put("pm25", weather.pm25)
 
         val hourlyArray = JSONArray()
         weather.hourlyList.forEach { h ->
@@ -155,7 +202,8 @@ object WeatherCache {
             uvIndex = json.getDouble("uvIndex"),
             hourlyList = hourlyList,
             dailyList = dailyList,
-            updateTimeText = json.optString("updateTimeText", "刚刚更新")
+            updateTimeText = json.optString("updateTimeText", "刚刚更新"),
+            pm25 = json.optDouble("pm25", 25.0)
         )
     }
 }

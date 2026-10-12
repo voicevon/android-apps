@@ -49,12 +49,13 @@ import java.util.Locale
 @Composable
 fun AddEditTodoDialog(
     initialTodo: TodoItem? = null,
+    initialColorHex: String? = null,
     onDismiss: () -> Unit,
     onConfirm: (title: String, desc: String, hasReminder: Boolean, reminderTime: Long?, colorHex: String) -> Unit
 ) {
     var title by remember { mutableStateOf(initialTodo?.title ?: "") }
     var description by remember { mutableStateOf(initialTodo?.description ?: "") }
-    var selectedColor by remember { mutableStateOf(initialTodo?.colorHex ?: TagColors.first()) }
+    var selectedColor by remember { mutableStateOf(initialTodo?.colorHex ?: initialColorHex ?: TagColors.first()) }
     var hasReminder by remember { mutableStateOf(initialTodo?.hasReminder ?: false) }
     var reminderTime by remember {
         mutableStateOf(

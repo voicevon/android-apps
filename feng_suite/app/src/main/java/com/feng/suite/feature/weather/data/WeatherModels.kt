@@ -57,7 +57,8 @@ data class WeatherData(
     val uvIndex: Double,
     val hourlyList: List<HourlyForecast>,
     val dailyList: List<DailyForecast>,
-    val updateTimeText: String
+    val updateTimeText: String,
+    val pm25: Double = 25.0
 )
 
 object WeatherCodeMapper {

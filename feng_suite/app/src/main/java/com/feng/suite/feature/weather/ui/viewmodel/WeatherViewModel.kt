@@ -58,6 +58,27 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         loadWeather(city, isSilent = false)
     }
 
+    private val _localCity = MutableStateFlow(WeatherCache.getLocalCity(context))
+    val localCity: StateFlow<City> = _localCity.asStateFlow()
+
+    private val _customCities = MutableStateFlow(WeatherCache.getCustomCities(context))
+    val customCities: StateFlow<List<City>> = _customCities.asStateFlow()
+
+    fun addCustomCity(city: City) {
+        val current = _customCities.value.toMutableList()
+        if (current.none { it.name == city.name }) {
+            current.add(city)
+            _customCities.value = current
+            WeatherCache.saveCustomCities(context, current)
+        }
+    }
+
+    fun removeCustomCity(city: City) {
+        val updated = _customCities.value.filterNot { it.name == city.name }
+        _customCities.value = updated
+        WeatherCache.saveCustomCities(context, updated)
+    }
+
     fun locateCurrentCity(context: android.content.Context, onPermissionNeeded: () -> Unit) {
         if (!com.feng.suite.feature.weather.util.LocationHelper.hasLocationPermission(context)) {
             onPermissionNeeded()
@@ -70,6 +91,8 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                 val location = com.feng.suite.feature.weather.util.LocationHelper.getCurrentLocation(context)
                 if (location != null) {
                     val city = WeatherService.reverseGeocode(context, location.latitude, location.longitude)
+                    WeatherCache.saveLocalCity(context, city)
+                    _localCity.value = city
                     _currentCity.value = city
                     loadWeather(city, isSilent = false)
                 } else {

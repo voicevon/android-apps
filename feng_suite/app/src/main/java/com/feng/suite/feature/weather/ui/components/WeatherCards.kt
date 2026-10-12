@@ -17,7 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Air
-import androidx.compose.material.icons.outlined.Compress
+import androidx.compose.material.icons.outlined.Grain
 import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.HorizontalDivider
@@ -51,72 +51,73 @@ fun CurrentWeatherSection(
 ) {
     val info = WeatherCodeMapper.map(data.weatherCode)
 
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 大图标
-        Icon(
-            imageVector = info.icon,
-            contentDescription = info.description,
-            tint = TextWhitePrimary,
-            modifier = Modifier.size(72.dp)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // 超大当前温度
-        Text(
-            text = "${data.currentTemp}°",
-            fontSize = 78.sp,
-            fontWeight = FontWeight.Light,
-            color = TextWhitePrimary,
-            letterSpacing = (-2).sp
-        )
-
-        // 天气描述
-        Text(
-            text = info.description,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Medium,
-            color = TextWhitePrimary
-        )
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        // 当日高低温与体感
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        // 左大栏：图标在上方，天气描述在下方
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = "↑${data.maxTemp}°  ↓${data.minTemp}°",
-                fontSize = 15.sp,
-                color = TextWhiteSecondary
+            Icon(
+                imageVector = info.icon,
+                contentDescription = info.description,
+                tint = TextWhitePrimary,
+                modifier = Modifier.size(62.dp)
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "•",
-                fontSize = 15.sp,
-                color = TextWhiteTertiary
-            )
-            Text(
-                text = "体感 ${data.apparentTemp}°",
-                fontSize = 15.sp,
-                color = TextWhiteSecondary
+                text = info.description,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+                color = TextWhitePrimary
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.width(26.dp))
 
-        Text(
-            text = data.updateTimeText,
-            fontSize = 12.sp,
-            color = TextWhiteTertiary
-        )
+        // 右大栏：核心温度区（左侧实时超大温度，右侧分三行最高/最低/体感）
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "${data.currentTemp}°",
+                fontSize = 72.sp,
+                fontWeight = FontWeight.Light,
+                color = TextWhitePrimary,
+                letterSpacing = (-2).sp
+            )
 
-        Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    text = "↑ ${data.maxTemp}°",
+                    fontSize = 14.5.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFFFCA5A5)
+                )
+                Text(
+                    text = "↓ ${data.minTemp}°",
+                    fontSize = 14.5.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF93C5FD)
+                )
+                Text(
+                    text = "体感 ${data.apparentTemp}°",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = TextWhiteSecondary
+                )
+            }
+        }
     }
 }
 
@@ -364,12 +365,21 @@ fun MetricsGridCard(
                 modifier = Modifier.weight(1f)
             )
 
+            val pm25Val = data.pm25.toInt()
+            val pm25Quality = when {
+                pm25Val <= 35 -> "空气优质"
+                pm25Val <= 75 -> "空气良好"
+                pm25Val <= 115 -> "轻度污染"
+                pm25Val <= 150 -> "中度污染"
+                else -> "重度污染"
+            }
+
             MetricItem(
-                icon = Icons.Outlined.Compress,
-                title = "地面气压",
-                valueNumber = "${data.pressure.toInt()}",
-                valueUnit = "hPa",
-                subtitle = "标准大气压",
+                icon = Icons.Outlined.Grain,
+                title = "PM2.5",
+                valueNumber = "$pm25Val",
+                valueUnit = "μg/m³",
+                subtitle = pm25Quality,
                 modifier = Modifier.weight(1f)
             )
         }
