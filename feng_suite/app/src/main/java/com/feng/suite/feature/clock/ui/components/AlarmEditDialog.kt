@@ -42,7 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.feng.suite.feature.clock.data.AlarmEntity
-import com.feng.suite.feature.clock.ui.theme.FossifyOrangePrimary
+import com.feng.suite.ui.theme.YellowPrimary
 
 @Composable
 fun AlarmEditDialog(
@@ -188,7 +188,7 @@ fun AlarmEditDialog(
                         onCheckedChange = { isVibrate = it },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
-                            checkedTrackColor = FossifyOrangePrimary
+                            checkedTrackColor = YellowPrimary
                         )
                     )
                 }
@@ -262,7 +262,7 @@ fun AlarmEditDialog(
                     }
                     onSave(hour, minute, label, daysBitmask, isVibrate, snoozeMinutes, finalTarget)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = FossifyOrangePrimary)
+                colors = ButtonDefaults.buttonColors(containerColor = YellowPrimary)
             ) {
                 Text("保存", color = Color.White, fontWeight = FontWeight.Bold)
             }
@@ -304,7 +304,7 @@ private fun NumberSpinner(
                 text = String.format("%02d", value),
                 fontSize = 36.sp,
                 fontWeight = FontWeight.Bold,
-                color = FossifyOrangePrimary
+                color = YellowPrimary
             )
         }
 
@@ -329,7 +329,7 @@ private fun ShortcutChip(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
             .background(
-                if (isSelected) FossifyOrangePrimary.copy(alpha = 0.2f)
+                if (isSelected) YellowPrimary.copy(alpha = 0.2f)
                 else MaterialTheme.colorScheme.surfaceVariant
             )
             .clickable(onClick = onClick)
@@ -339,7 +339,7 @@ private fun ShortcutChip(
         Text(
             text = text,
             fontSize = 12.sp,
-            color = if (isSelected) FossifyOrangePrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (isSelected) YellowPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
     }

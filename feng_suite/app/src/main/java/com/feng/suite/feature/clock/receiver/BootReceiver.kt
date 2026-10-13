@@ -1,10 +1,11 @@
-﻿package com.feng.suite.feature.clock.receiver
+package com.feng.suite.feature.clock.receiver
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.feng.suite.feature.clock.alarm.AlarmScheduler
 import com.feng.suite.feature.clock.data.AlarmDatabase
+import com.feng.suite.feature.todo.reminder.TodoReminderScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -25,6 +26,7 @@ class BootReceiver : BroadcastReceiver() {
                 for (alarm in enabledAlarms) {
                     scheduler.schedule(alarm)
                 }
+                TodoReminderScheduler(context).restoreAll()
             }
         }
     }

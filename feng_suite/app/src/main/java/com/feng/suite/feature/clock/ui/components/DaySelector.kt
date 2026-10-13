@@ -1,4 +1,4 @@
-﻿package com.feng.suite.feature.clock.ui.components
+package com.feng.suite.feature.clock.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,7 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.feng.suite.feature.clock.ui.theme.FossifyOrangePrimary
+import com.feng.suite.ui.theme.YellowPrimary
 
 private val DAYS_LABELS = listOf("日", "一", "二", "三", "四", "五", "六")
 
@@ -43,12 +43,12 @@ fun DaySelector(
                     .size(38.dp)
                     .clip(CircleShape)
                     .background(
-                        if (isSelected) FossifyOrangePrimary
+                        if (isSelected) YellowPrimary
                         else MaterialTheme.colorScheme.surfaceVariant
                     )
                     .border(
                         width = 1.dp,
-                        color = if (isSelected) FossifyOrangePrimary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        color = if (isSelected) YellowPrimary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                         shape = CircleShape
                     )
                     .clickable {

@@ -1,4 +1,4 @@
-﻿package com.feng.suite.feature.clock.ui.screens
+package com.feng.suite.feature.clock.ui.screens
 
 import android.app.NotificationManager
 import android.content.Context
@@ -45,10 +45,10 @@ import androidx.compose.ui.unit.sp
 import com.feng.suite.feature.clock.alarm.AlarmRinger
 import com.feng.suite.feature.clock.alarm.AlarmScheduler
 import com.feng.suite.feature.clock.receiver.AlarmReceiver
-import com.feng.suite.feature.clock.ui.theme.DangerRed
-import com.feng.suite.feature.clock.ui.theme.FossifyClockTheme
-import com.feng.suite.feature.clock.ui.theme.FossifyDarkBackground
-import com.feng.suite.feature.clock.ui.theme.FossifyOrangePrimary
+import com.feng.suite.ui.theme.RedPrimary
+import com.feng.suite.ui.theme.FengSuiteTheme
+import com.feng.suite.ui.theme.BackgroundDark
+import com.feng.suite.ui.theme.YellowPrimary
 
 class RingingActivity : ComponentActivity() {
 
@@ -76,7 +76,7 @@ class RingingActivity : ComponentActivity() {
         val snoozeMinutes = intent.getIntExtra(AlarmReceiver.EXTRA_SNOOZE_MINUTES, 10)
 
         setContent {
-            FossifyClockTheme(darkTheme = true) {
+            FengSuiteTheme {
                 RingingScreen(
                     hour = hour,
                     minute = minute,
@@ -131,7 +131,7 @@ fun RingingScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(FossifyDarkBackground)
+            .background(BackgroundDark)
             .padding(32.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -147,13 +147,13 @@ fun RingingScreen(
                 modifier = Modifier
                     .size(120.dp)
                     .scale(scale)
-                    .background(FossifyOrangePrimary.copy(alpha = 0.2f), CircleShape),
+                    .background(YellowPrimary.copy(alpha = 0.2f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Alarm,
                     contentDescription = null,
-                    tint = FossifyOrangePrimary,
+                    tint = YellowPrimary,
                     modifier = Modifier.size(64.dp)
                 )
             }
@@ -175,7 +175,7 @@ fun RingingScreen(
                         text = label,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Medium,
-                        color = FossifyOrangePrimary
+                        color = YellowPrimary
                     )
                 }
             }
@@ -204,7 +204,7 @@ fun RingingScreen(
                 // 关闭按钮 (红色高亮)
                 Button(
                     onClick = onDismiss,
-                    colors = ButtonDefaults.buttonColors(containerColor = DangerRed),
+                    colors = ButtonDefaults.buttonColors(containerColor = RedPrimary),
                     modifier = Modifier.height(56.dp),
                     shape = CircleShape
                 ) {

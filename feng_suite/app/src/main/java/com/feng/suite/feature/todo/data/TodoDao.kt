@@ -16,6 +16,9 @@ interface TodoDao {
     @Query("SELECT * FROM todos WHERE id = :id")
     suspend fun getTodoById(id: Long): TodoItem?
 
+    @Query("SELECT * FROM todos WHERE hasReminder = 1 AND isCompleted = 0 AND reminderTime IS NOT NULL")
+    suspend fun getPendingReminders(): List<TodoItem>
+
     @Query("SELECT MAX(orderIndex) FROM todos")
     suspend fun getMaxOrderIndex(): Int?
 

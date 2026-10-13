@@ -1,4 +1,4 @@
-﻿package com.feng.suite.feature.clock.ui.screens
+package com.feng.suite.feature.clock.ui.screens
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -41,8 +41,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.feng.suite.feature.clock.ui.theme.DangerRed
-import com.feng.suite.feature.clock.ui.theme.FossifyOrangePrimary
+import com.feng.suite.ui.theme.RedPrimary
+import com.feng.suite.ui.theme.YellowPrimary
 import kotlinx.coroutines.delay
 
 @Composable
@@ -90,7 +90,7 @@ fun TimerScreen(modifier: Modifier = Modifier) {
             CircularProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.fillMaxSize(),
-                color = FossifyOrangePrimary,
+                color = YellowPrimary,
                 strokeWidth = 10.dp
             )
 
@@ -106,7 +106,7 @@ fun TimerScreen(modifier: Modifier = Modifier) {
                         text = "时间到！",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = DangerRed
+                        color = RedPrimary
                     )
                 }
             }
@@ -138,7 +138,7 @@ fun TimerScreen(modifier: Modifier = Modifier) {
                             modifier = Modifier
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(
-                                    if (isSelected) FossifyOrangePrimary
+                                    if (isSelected) YellowPrimary
                                     else MaterialTheme.colorScheme.surfaceVariant
                                 )
                                 .clickable {
@@ -191,7 +191,7 @@ fun TimerScreen(modifier: Modifier = Modifier) {
                     }
                     isRunning = !isRunning
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = FossifyOrangePrimary),
+                colors = ButtonDefaults.buttonColors(containerColor = YellowPrimary),
                 shape = CircleShape,
                 modifier = Modifier.size(76.dp)
             ) {

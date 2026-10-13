@@ -1,4 +1,4 @@
-﻿package com.feng.suite.feature.clock.ui.screens
+package com.feng.suite.feature.clock.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -42,8 +42,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.feng.suite.feature.clock.ui.theme.DangerRed
-import com.feng.suite.feature.clock.ui.theme.FossifyOrangePrimary
+import com.feng.suite.ui.theme.RedPrimary
+import com.feng.suite.ui.theme.YellowPrimary
 import kotlinx.coroutines.delay
 
 @Composable
@@ -110,7 +110,7 @@ fun StopwatchScreen(modifier: Modifier = Modifier) {
             Button(
                 onClick = { isRunning = !isRunning },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isRunning) DangerRed else FossifyOrangePrimary
+                    containerColor = if (isRunning) RedPrimary else YellowPrimary
                 ),
                 shape = CircleShape,
                 modifier = Modifier.size(76.dp),
@@ -140,7 +140,7 @@ fun StopwatchScreen(modifier: Modifier = Modifier) {
                         CircleShape
                     )
             ) {
-                Icon(Icons.Default.Flag, contentDescription = "计次", tint = FossifyOrangePrimary)
+                Icon(Icons.Default.Flag, contentDescription = "计次", tint = YellowPrimary)
             }
         }
 
@@ -175,7 +175,7 @@ fun StopwatchScreen(modifier: Modifier = Modifier) {
                         Text(
                             text = "+${formatStopwatchTime(lapSplit)}",
                             fontSize = 14.sp,
-                            color = FossifyOrangePrimary
+                            color = YellowPrimary
                         )
                         Text(
                             text = formatStopwatchTime(lapTime),

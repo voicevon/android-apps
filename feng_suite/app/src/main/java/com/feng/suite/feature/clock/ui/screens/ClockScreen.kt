@@ -1,4 +1,4 @@
-﻿package com.feng.suite.feature.clock.ui.screens
+package com.feng.suite.feature.clock.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.feng.suite.feature.clock.ui.theme.FossifyOrangePrimary
+import com.feng.suite.ui.theme.YellowPrimary
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -74,7 +74,7 @@ fun ClockScreen(modifier: Modifier = Modifier) {
                     text = ":${secFormat.format(currentTime)}",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Medium,
-                    color = FossifyOrangePrimary,
+                    color = YellowPrimary,
                     modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
                 )
             }

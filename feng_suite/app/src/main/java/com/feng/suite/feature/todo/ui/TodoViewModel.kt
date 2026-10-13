@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.feng.suite.feature.todo.data.TodoDatabase
 import com.feng.suite.feature.todo.data.TodoItem
+import com.feng.suite.feature.todo.reminder.TodoReminderScheduler
 import com.feng.suite.ui.theme.TagColors
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,6 +17,7 @@ import kotlinx.coroutines.launch
 
 class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val todoDao = TodoDatabase.getDatabase(application).todoDao()
+    private val reminderScheduler = TodoReminderScheduler(application)
 
     private val _selectedColorFilter = MutableStateFlow<String?>(null)
     val selectedColorFilter: StateFlow<String?> = _selectedColorFilter.asStateFlow()
@@ -68,31 +70,37 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 colorHex = colorHex,
                 orderIndex = maxIndex + 1
             )
-            todoDao.insertTodo(item)
+            val id = todoDao.insertTodo(item)
+            reminderScheduler.apply(item.copy(id = id))
         }
     }
 
     fun toggleCompleted(todo: TodoItem) {
         viewModelScope.launch {
-            todoDao.updateTodo(todo.copy(isCompleted = !todo.isCompleted))
+            val updated = todo.copy(isCompleted = !todo.isCompleted)
+            todoDao.updateTodo(updated)
+            reminderScheduler.apply(updated)
         }
     }
 
     fun updateTodo(todo: TodoItem) {
         viewModelScope.launch {
             todoDao.updateTodo(todo)
+            reminderScheduler.apply(todo)
         }
     }
 
     fun deleteTodo(todo: TodoItem) {
         viewModelScope.launch {
             todoDao.deleteTodo(todo)
+            reminderScheduler.cancel(todo.id)
         }
     }
 
     fun restoreTodo(todo: TodoItem) {
         viewModelScope.launch {
             todoDao.insertTodo(todo)
+            reminderScheduler.apply(todo)
         }
     }
 

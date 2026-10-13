@@ -41,8 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.feng.suite.feature.clock.data.AlarmEntity
-import com.feng.suite.feature.clock.ui.theme.DangerRed
-import com.feng.suite.feature.clock.ui.theme.FossifyOrangePrimary
+import com.feng.suite.ui.theme.RedPrimary
+import com.feng.suite.ui.theme.YellowPrimary
 
 @Composable
 fun AlarmCard(
@@ -87,7 +87,7 @@ fun AlarmCard(
                             text = alarm.label,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
-                            color = FossifyOrangePrimary.copy(alpha = alpha)
+                            color = YellowPrimary.copy(alpha = alpha)
                         )
                     } else {
                         Spacer(modifier = Modifier.width(1.dp))
@@ -105,14 +105,14 @@ fun AlarmCard(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(FossifyOrangePrimary.copy(alpha = 0.15f))
+                                .background(YellowPrimary.copy(alpha = 0.15f))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text(
                                 text = badgeText,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = FossifyOrangePrimary.copy(alpha = alpha)
+                                color = YellowPrimary.copy(alpha = alpha)
                             )
                         }
                     }
@@ -148,7 +148,7 @@ fun AlarmCard(
                     onCheckedChange = { onToggle() },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
-                        checkedTrackColor = FossifyOrangePrimary,
+                        checkedTrackColor = YellowPrimary,
                         uncheckedThumbColor = MaterialTheme.colorScheme.outline,
                         uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
@@ -221,7 +221,7 @@ fun AlarmCard(
                                 Icon(
                                     imageVector = Icons.Outlined.Delete,
                                     contentDescription = "删除",
-                                    tint = DangerRed
+                                    tint = RedPrimary
                                 )
                             }
                         }

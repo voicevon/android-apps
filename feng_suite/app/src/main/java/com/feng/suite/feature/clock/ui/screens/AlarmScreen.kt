@@ -48,7 +48,7 @@ import androidx.compose.ui.unit.sp
 import com.feng.suite.feature.clock.data.AlarmEntity
 import com.feng.suite.feature.clock.ui.components.AlarmCard
 import com.feng.suite.feature.clock.ui.components.AlarmEditDialog
-import com.feng.suite.feature.clock.ui.theme.FossifyOrangePrimary
+import com.feng.suite.ui.theme.YellowPrimary
 import com.feng.suite.feature.clock.ui.viewmodel.AlarmViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,7 +89,7 @@ fun AlarmScreen(
                     editingAlarm = null
                     showEditDialog = true
                 },
-                containerColor = FossifyOrangePrimary,
+                containerColor = YellowPrimary,
                 contentColor = Color.White,
                 shape = CircleShape,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -110,7 +110,7 @@ fun AlarmScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(FossifyOrangePrimary.copy(alpha = 0.12f))
+                        .background(YellowPrimary.copy(alpha = 0.12f))
                         .padding(horizontal = 14.dp, vertical = 10.dp)
                 ) {
                     Row(
@@ -120,14 +120,14 @@ fun AlarmScreen(
                         Icon(
                             imageVector = Icons.Outlined.NotificationsActive,
                             contentDescription = null,
-                            tint = FossifyOrangePrimary,
+                            tint = YellowPrimary,
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
                             text = countdownText ?: "",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
-                            color = FossifyOrangePrimary
+                            color = YellowPrimary
                         )
                     }
                 }

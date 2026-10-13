@@ -74,6 +74,11 @@
             </intent-filter>
         </receiver>
 
+        <!-- 待办到点提醒广播接收器（仅由本应用 PendingIntent 触发） -->
+        <receiver
+            android:name=".feature.todo.reminder.TodoReminderReceiver"
+            android:exported="false" />
+
         <!-- 闹钟前台响铃服务，运行于 :alarm 独立保护子进程 -->
         <service
             android:name=".feature.clock.alarm.AlarmRinger"
