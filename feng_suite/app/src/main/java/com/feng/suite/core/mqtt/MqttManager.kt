@@ -43,6 +43,17 @@ data class MqttConfig(
     val isEnabled: Boolean = true
 )
 
+data class MqttLogEntry(
+    val id: String = UUID.randomUUID().toString(),
+    val topic: String,
+    val sender: String,
+    val target: String = "全部设备",
+    val msgType: String, // HEARTBEAT, CHAT, ALARM, OTHER
+    val payload: String,
+    val timestamp: Long = System.currentTimeMillis(),
+    val isOutgoing: Boolean = false
+)
+
 object MqttManager {
 
     private const val TAG = "MqttManager"
@@ -51,6 +62,7 @@ object MqttManager {
     private const val KEY_PORT = "mqtt_port"
     private const val KEY_DEVICE_NAME = "mqtt_device_name"
     private const val KEY_ENABLED = "mqtt_enabled"
+    private const val KEY_LOGS_JSON = "mqtt_logs_json"
 
     private const val TOPIC_BROADCAST = "feng_suite/alarm/broadcast"
     private const val TOPIC_DEVICE_PREFIX = "feng_suite/alarm/device/"
@@ -69,12 +81,84 @@ object MqttManager {
     private val _config = MutableStateFlow(MqttConfig())
     val config: StateFlow<MqttConfig> = _config.asStateFlow()
 
+    private val _logs = MutableStateFlow<List<MqttLogEntry>>(emptyList())
+    val logs: StateFlow<List<MqttLogEntry>> = _logs.asStateFlow()
+
     fun init(context: Context) {
         appContext = context.applicationContext
         loadConfig(context)
+        loadLogs(context)
 
         if (_config.value.isEnabled) {
             connect()
+        }
+    }
+
+    fun addLog(entry: MqttLogEntry) {
+        scope.launch {
+            val current = _logs.value.toMutableList()
+            current.add(0, entry)
+            if (current.size > 150) {
+                current.removeAt(current.size - 1)
+            }
+            _logs.value = current
+            saveLogsToPrefs(current)
+        }
+    }
+
+    fun clearLogs() {
+        _logs.value = emptyList()
+        saveLogsToPrefs(emptyList())
+    }
+
+    private fun loadLogs(context: Context) {
+        try {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val jsonStr = prefs.getString(KEY_LOGS_JSON, null) ?: return
+            val array = org.json.JSONArray(jsonStr)
+            val list = mutableListOf<MqttLogEntry>()
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                list.add(
+                    MqttLogEntry(
+                        id = obj.optString("id", UUID.randomUUID().toString()),
+                        topic = obj.optString("topic", ""),
+                        sender = obj.optString("sender", ""),
+                        target = obj.optString("target", "全部设备"),
+                        msgType = obj.optString("msgType", "OTHER"),
+                        payload = obj.optString("payload", ""),
+                        timestamp = obj.optLong("timestamp", System.currentTimeMillis()),
+                        isOutgoing = obj.optBoolean("isOutgoing", false)
+                    )
+                )
+            }
+            _logs.value = list
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load mqtt logs", e)
+        }
+    }
+
+    private fun saveLogsToPrefs(list: List<MqttLogEntry>) {
+        val context = appContext ?: return
+        try {
+            val array = org.json.JSONArray()
+            list.take(100).forEach { item ->
+                val obj = JSONObject().apply {
+                    put("id", item.id)
+                    put("topic", item.topic)
+                    put("sender", item.sender)
+                    put("target", item.target)
+                    put("msgType", item.msgType)
+                    put("payload", item.payload)
+                    put("timestamp", item.timestamp)
+                    put("isOutgoing", item.isOutgoing)
+                }
+                array.put(obj)
+            }
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putString(KEY_LOGS_JSON, array.toString()).apply()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to save mqtt logs", e)
         }
     }
 
@@ -202,7 +286,10 @@ object MqttManager {
             val directChatTopic = "$TOPIC_CHAT_DEVICE_PREFIX$deviceName"
             client.subscribe(directChatTopic, 1)
 
-            Log.d(TAG, "Subscribed to topics: $TOPIC_BROADCAST, $directAlarmTopic, $TOPIC_CHAT_BROADCAST, $directChatTopic")
+            // 3. 订阅所有设备在线心跳广播
+            client.subscribe(TOPIC_HEARTBEAT, 1)
+
+            Log.d(TAG, "Subscribed to topics: $TOPIC_BROADCAST, $directAlarmTopic, $TOPIC_CHAT_BROADCAST, $directChatTopic, $TOPIC_HEARTBEAT")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to subscribe topics", e)
         }
@@ -226,12 +313,25 @@ object MqttManager {
                 val payload = json.toString().toByteArray(Charsets.UTF_8)
                 val message = MqttMessage(payload).apply { qos = 1 }
 
-                if (chatMessage.target != "全部设备" && chatMessage.target.isNotBlank()) {
-                    client.publish("$TOPIC_CHAT_DEVICE_PREFIX${chatMessage.target}", message)
+                val targetTopic = if (chatMessage.target != "全部设备" && chatMessage.target.isNotBlank()) {
+                    "$TOPIC_CHAT_DEVICE_PREFIX${chatMessage.target}"
                 } else {
-                    client.publish(TOPIC_CHAT_BROADCAST, message)
+                    TOPIC_CHAT_BROADCAST
                 }
+                client.publish(targetTopic, message)
                 Log.d(TAG, "Published chat message: $json")
+
+                addLog(
+                    MqttLogEntry(
+                        topic = targetTopic,
+                        sender = chatMessage.sender,
+                        target = chatMessage.target,
+                        msgType = "CHAT",
+                        payload = json.toString(),
+                        timestamp = chatMessage.timestamp,
+                        isOutgoing = true
+                    )
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to publish chat message", e)
             }
@@ -255,6 +355,18 @@ object MqttManager {
                 val message = MqttMessage(payload).apply { qos = 1 }
                 client.publish(TOPIC_HEARTBEAT, message)
                 Log.d(TAG, "Published heartbeat: $json")
+
+                addLog(
+                    MqttLogEntry(
+                        topic = TOPIC_HEARTBEAT,
+                        sender = _config.value.deviceName,
+                        target = "全部设备",
+                        msgType = "HEARTBEAT",
+                        payload = json.toString(),
+                        timestamp = System.currentTimeMillis(),
+                        isOutgoing = true
+                    )
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to publish heartbeat", e)
             }
@@ -299,13 +411,25 @@ object MqttManager {
                 val payload = json.toString().toByteArray(Charsets.UTF_8)
                 val message = MqttMessage(payload).apply { qos = 1 }
 
-                // 若指定了目标设备且非全部设备，发布到专属设备 topic，同时也发送到 broadcast 携带 targetDevice
-                if (target != "全部设备" && target != "本机") {
-                    client.publish("$TOPIC_DEVICE_PREFIX$target", message)
+                val targetTopic = if (target != "全部设备" && target != "本机") {
+                    "$TOPIC_DEVICE_PREFIX$target"
                 } else {
-                    client.publish(TOPIC_BROADCAST, message)
+                    TOPIC_BROADCAST
                 }
+                client.publish(targetTopic, message)
                 Log.d(TAG, "Published alarm to target=$target: $json")
+
+                addLog(
+                    MqttLogEntry(
+                        topic = targetTopic,
+                        sender = myDevice,
+                        target = target,
+                        msgType = "ALARM",
+                        payload = json.toString(),
+                        timestamp = System.currentTimeMillis(),
+                        isOutgoing = true
+                    )
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to publish alarm", e)
             }
@@ -321,8 +445,31 @@ object MqttManager {
                 val bodyStr = String(message.payload, Charsets.UTF_8)
                 val json = JSONObject(bodyStr)
 
-                // 1. 判断是否为即时聊天消息 (CHAT)
                 val msgType = json.optString("msgType", "")
+                val myDevice = _config.value.deviceName
+
+                // 0. 判断是否为设备在线心跳 (HEARTBEAT)
+                val isHeartbeatTopic = topic?.startsWith(TOPIC_HEARTBEAT) == true
+                if (msgType == "HEARTBEAT" || isHeartbeatTopic) {
+                    val device = json.optString("device", json.optString("deviceName", "未知设备"))
+                    val timestamp = json.optLong("timestamp", System.currentTimeMillis())
+                    Log.d(TAG, "Heartbeat received from $device ($timestamp)")
+
+                    addLog(
+                        MqttLogEntry(
+                            topic = topic ?: TOPIC_HEARTBEAT,
+                            sender = device,
+                            target = "全部设备",
+                            msgType = "HEARTBEAT",
+                            payload = bodyStr,
+                            timestamp = timestamp,
+                            isOutgoing = device.equals(myDevice, ignoreCase = true)
+                        )
+                    )
+                    return@launch
+                }
+
+                // 1. 判断是否为即时聊天消息 (CHAT)
                 val isChatTopic = topic?.startsWith("feng_suite/chat") == true
                 if (msgType == "CHAT" || isChatTopic) {
                     val sender = json.optString("sender", "")
@@ -330,7 +477,18 @@ object MqttManager {
                     val content = json.optString("content", "")
                     val id = json.optString("id", UUID.randomUUID().toString())
                     val timestamp = json.optLong("timestamp", System.currentTimeMillis())
-                    val myDevice = _config.value.deviceName
+
+                    addLog(
+                        MqttLogEntry(
+                            topic = topic ?: TOPIC_CHAT_BROADCAST,
+                            sender = sender,
+                            target = target,
+                            msgType = "CHAT",
+                            payload = bodyStr,
+                            timestamp = timestamp,
+                            isOutgoing = sender.equals(myDevice, ignoreCase = true)
+                        )
+                    )
 
                     // 过滤本机自己发出的消息，避免回环
                     if (sender.equals(myDevice, ignoreCase = true)) {
@@ -365,7 +523,18 @@ object MqttManager {
                 val sourceDevice = json.optString("sourceDevice", "")
                 val targetDevice = json.optString("targetDevice", "全部设备")
                 val action = json.optString("action", "CREATE_OR_UPDATE")
-                val myDevice = _config.value.deviceName
+
+                addLog(
+                    MqttLogEntry(
+                        topic = topic ?: TOPIC_BROADCAST,
+                        sender = sourceDevice,
+                        target = targetDevice,
+                        msgType = "ALARM",
+                        payload = bodyStr,
+                        timestamp = System.currentTimeMillis(),
+                        isOutgoing = sourceDevice.equals(myDevice, ignoreCase = true)
+                    )
+                )
 
                 // 忽略本机自己发出的消息，避免环路
                 if (sourceDevice.equals(myDevice, ignoreCase = true)) {

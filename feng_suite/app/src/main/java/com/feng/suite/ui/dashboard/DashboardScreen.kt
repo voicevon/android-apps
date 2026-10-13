@@ -30,6 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.feng.suite.core.mqtt.MqttLogDialog
+import com.feng.suite.core.mqtt.MqttMenuDialog
 import com.feng.suite.core.mqtt.MqttSettingsDialog
 import com.feng.suite.feature.chat.ui.components.DashboardChatCard
 import com.feng.suite.feature.chat.ui.viewmodel.ChatViewModel
@@ -103,10 +105,12 @@ fun DashboardScreen(
     }
     var showAddTodoDialog by remember { mutableStateOf(false) }
 
-    // 隐藏 7 连击进入 MQTT 设置窗口
+    // 隐藏 7 连击进入 MQTT 控制中心菜单
     var dateClickCount by remember { mutableIntStateOf(0) }
     var lastDateClickTime by remember { mutableLongStateOf(0L) }
+    var showMqttMenuDialog by remember { mutableStateOf(false) }
     var showMqttSettingsDialog by remember { mutableStateOf(false) }
+    var showMqttLogDialog by remember { mutableStateOf(false) }
 
     val activeTodos = remember(allTodos) { allTodos.filter { !it.isCompleted } }
     val filteredTodos = remember(activeTodos, selectedTodoColor) {
@@ -151,7 +155,7 @@ fun DashboardScreen(
                             dateClickCount++
                             if (dateClickCount >= 7) {
                                 dateClickCount = 0
-                                showMqttSettingsDialog = true
+                                showMqttMenuDialog = true
                             }
                         } else {
                             dateClickCount = 1
@@ -444,9 +448,29 @@ fun DashboardScreen(
         )
     }
 
+    if (showMqttMenuDialog) {
+        MqttMenuDialog(
+            onDismiss = { showMqttMenuDialog = false },
+            onOpenSettings = {
+                showMqttMenuDialog = false
+                showMqttSettingsDialog = true
+            },
+            onOpenLogs = {
+                showMqttMenuDialog = false
+                showMqttLogDialog = true
+            }
+        )
+    }
+
     if (showMqttSettingsDialog) {
         MqttSettingsDialog(
             onDismiss = { showMqttSettingsDialog = false }
+        )
+    }
+
+    if (showMqttLogDialog) {
+        MqttLogDialog(
+            onDismiss = { showMqttLogDialog = false }
         )
     }
 }
