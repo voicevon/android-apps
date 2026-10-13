@@ -64,24 +64,16 @@ fun DashboardChatCard(
                 )
             }
 
-            // 单行文本输入框
-            OutlinedTextField(
+            // 单行文本输入框（使用 BasicTextField 确保文字与占位符 100% 垂直居中，绝不切字）
+            androidx.compose.foundation.text.BasicTextField(
                 value = quickText,
                 onValueChange = { quickText = it },
-                placeholder = {
-                    Text("发送消息...", fontSize = 13.sp, color = TextWhiteSecondary)
-                },
                 singleLine = true,
-                shape = RoundedCornerShape(22.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = BluePrimary,
-                    unfocusedBorderColor = CardBorderDark,
-                    focusedTextColor = TextWhitePrimary,
-                    unfocusedTextColor = TextWhitePrimary,
-                    cursorColor = BluePrimary,
-                    focusedContainerColor = Color(0xFF0F172A).copy(alpha = 0.6f),
-                    unfocusedContainerColor = Color(0xFF0F172A).copy(alpha = 0.6f)
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    fontSize = 13.sp,
+                    color = TextWhitePrimary
                 ),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(BluePrimary),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(
                     onSend = {
@@ -93,7 +85,27 @@ fun DashboardChatCard(
                 ),
                 modifier = Modifier
                     .weight(1f)
-                    .height(48.dp)
+                    .height(40.dp),
+                decorationBox = { innerTextField ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color(0xFF0F172A).copy(alpha = 0.7f))
+                            .border(1.dp, CardBorderDark, RoundedCornerShape(20.dp))
+                            .padding(horizontal = 14.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (quickText.isEmpty()) {
+                            Text(
+                                text = "发送消息...",
+                                fontSize = 13.sp,
+                                color = Color(0xFF475569) // 越暗越好，低调不抢占视觉
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
             )
 
             // 发送按钮
@@ -105,7 +117,7 @@ fun DashboardChatCard(
                     }
                 },
                 modifier = Modifier
-                    .size(42.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .background(if (quickText.isNotBlank()) BluePrimary else Color(0xFF334155))
             ) {
@@ -113,7 +125,7 @@ fun DashboardChatCard(
                     imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "发送",
                     tint = Color.White,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(17.dp)
                 )
             }
         }

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.*
@@ -111,6 +112,8 @@ fun DashboardScreen(
     var showMqttMenuDialog by remember { mutableStateOf(false) }
     var showMqttSettingsDialog by remember { mutableStateOf(false) }
     var showMqttLogDialog by remember { mutableStateOf(false) }
+    var showMainMenu by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
 
     val activeTodos = remember(allTodos) { allTodos.filter { !it.isCompleted } }
     val filteredTodos = remember(activeTodos, selectedTodoColor) {
@@ -137,15 +140,14 @@ fun DashboardScreen(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // 1. 顶部 Header：左侧两行日期 + 右侧双外地时区芯片（限制 3 汉字）
+        // 1. 顶部 Header：左侧两行日期 + 中右双外地时区芯片 + 最右上角主菜单 (三道杠)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 2.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 左侧日期：两行显示（10月12日 / 星期一），连续点击 7 次触发隐藏设置
+            // 左侧日期：两行显示（10月12日 / 星期一），连续点击 7 次依然作为彩蛋触发设置
             Column(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
@@ -178,10 +180,13 @@ fun DashboardScreen(
                 )
             }
 
-            // 右侧双外地时区胶囊（上下两行排列，空间充裕防误触，与左侧两行日期完美对称）
+            Spacer(modifier = Modifier.weight(1f))
+
+            // 中右侧双外地时区胶囊（往左移一点，紧邻最右侧菜单按钮，上下两行排列）
             Column(
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.padding(end = 8.dp)
             ) {
                 ZoneChip(
                     cityName = formatZoneCityName(zone1Name),
@@ -193,6 +198,78 @@ fun DashboardScreen(
                     timeText = zone2TimeText,
                     onClick = { editingZoneIndex = 2 }
                 )
+            }
+
+            // 最右上角：主菜单按钮 (三个横杠图标)
+            Box {
+                IconButton(
+                    onClick = { showMainMenu = true },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFF1E293B).copy(alpha = 0.85f))
+                        .border(1.dp, CardBorderDark, RoundedCornerShape(10.dp))
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Menu,
+                        contentDescription = "主菜单",
+                        tint = Color(0xFFCBD5E1),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showMainMenu,
+                    onDismissRequest = { showMainMenu = false },
+                    offset = androidx.compose.ui.unit.DpOffset(x = 0.dp, y = 8.dp),
+                    modifier = Modifier
+                        .background(Color(0xFF1E293B))
+                        .border(1.dp, CardBorderDark, RoundedCornerShape(12.dp))
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Settings,
+                                    contentDescription = null,
+                                    tint = Color(0xFF60A5FA),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text("设置", color = TextWhitePrimary, fontSize = 14.sp)
+                            }
+                        },
+                        onClick = {
+                            showMainMenu = false
+                            showMqttMenuDialog = true
+                        }
+                    )
+
+                    HorizontalDivider(color = CardBorderDark)
+
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Info,
+                                    contentDescription = null,
+                                    tint = Color(0xFF34D399),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text("关于", color = TextWhitePrimary, fontSize = 14.sp)
+                            }
+                        },
+                        onClick = {
+                            showMainMenu = false
+                            showAboutDialog = true
+                        }
+                    )
+                }
             }
         }
 
@@ -471,6 +548,12 @@ fun DashboardScreen(
     if (showMqttLogDialog) {
         MqttLogDialog(
             onDismiss = { showMqttLogDialog = false }
+        )
+    }
+
+    if (showAboutDialog) {
+        AboutDialog(
+            onDismiss = { showAboutDialog = false }
         )
     }
 }
@@ -889,26 +972,15 @@ private fun ZoneChip(
             .background(Color(0xFF2563EB).copy(alpha = 0.18f))
             .border(1.dp, Color(0xFF3B82F6).copy(alpha = 0.35f), RoundedCornerShape(9.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 7.dp, vertical = 3.5.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Public,
-                contentDescription = null,
-                tint = Color(0xFF93C5FD),
-                modifier = Modifier.size(11.dp)
-            )
-            Spacer(modifier = Modifier.width(3.dp))
-            Text(
-                text = "$cityName $timeText",
-                fontSize = 11.5.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF93C5FD),
-                maxLines = 1
-            )
-        }
+        Text(
+            text = "$cityName $timeText",
+            fontSize = 11.5.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF93C5FD),
+            maxLines = 1
+        )
     }
 }
 
