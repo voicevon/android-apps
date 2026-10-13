@@ -1,4 +1,4 @@
-﻿package com.feng.suite.feature.clock.data
+package com.feng.suite.feature.clock.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -27,7 +27,8 @@ data class AlarmEntity(
     val daysBitmask: Int = 0,
     val label: String = "",
     val isVibrate: Boolean = true,
-    val snoozeMinutes: Int = 10
+    val snoozeMinutes: Int = 10,
+    val targetDevice: String = ""
 ) {
     /**
      * 判断周几是否激活 (Calendar.SUNDAY=1 ... SATURDAY=7)

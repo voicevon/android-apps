@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.feng.suite.core.mqtt.MqttSettingsDialog
 import com.feng.suite.feature.clock.data.AlarmEntity
 import com.feng.suite.feature.clock.ui.viewmodel.AlarmViewModel
 import com.feng.suite.feature.todo.data.TodoItem
@@ -99,6 +100,11 @@ fun DashboardScreen(
     }
     var showAddTodoDialog by remember { mutableStateOf(false) }
 
+    // 隐藏 7 连击进入 MQTT 设置窗口
+    var dateClickCount by remember { mutableIntStateOf(0) }
+    var lastDateClickTime by remember { mutableLongStateOf(0L) }
+    var showMqttSettingsDialog by remember { mutableStateOf(false) }
+
     val activeTodos = remember(allTodos) { allTodos.filter { !it.isCompleted } }
     val filteredTodos = remember(activeTodos, selectedTodoColor) {
         if (selectedTodoColor == null) {
@@ -132,8 +138,25 @@ fun DashboardScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 左侧日期：两行显示（10月12日 / 星期一）
-            Column {
+            // 左侧日期：两行显示（10月12日 / 星期一），连续点击 7 次触发隐藏设置
+            Column(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable {
+                        val now = System.currentTimeMillis()
+                        if (now - lastDateClickTime < 500L) {
+                            dateClickCount++
+                            if (dateClickCount >= 7) {
+                                dateClickCount = 0
+                                showMqttSettingsDialog = true
+                            }
+                        } else {
+                            dateClickCount = 1
+                        }
+                        lastDateClickTime = now
+                    }
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
+            ) {
                 Text(
                     text = monthDayText,
                     fontSize = 16.sp,
@@ -408,6 +431,12 @@ fun DashboardScreen(
             },
             containerColor = CardBackgroundDark,
             shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    if (showMqttSettingsDialog) {
+        MqttSettingsDialog(
+            onDismiss = { showMqttSettingsDialog = false }
         )
     }
 }

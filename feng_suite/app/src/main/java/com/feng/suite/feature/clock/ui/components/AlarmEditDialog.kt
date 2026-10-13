@@ -1,4 +1,4 @@
-﻿package com.feng.suite.feature.clock.ui.components
+package com.feng.suite.feature.clock.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -48,7 +48,15 @@ import com.feng.suite.feature.clock.ui.theme.FossifyOrangePrimary
 fun AlarmEditDialog(
     initialAlarm: AlarmEntity? = null,
     onDismiss: () -> Unit,
-    onSave: (hour: Int, minute: Int, label: String, daysBitmask: Int, isVibrate: Boolean, snoozeMinutes: Int) -> Unit
+    onSave: (
+        hour: Int,
+        minute: Int,
+        label: String,
+        daysBitmask: Int,
+        isVibrate: Boolean,
+        snoozeMinutes: Int,
+        targetDevice: String
+    ) -> Unit
 ) {
     var hour by remember { mutableIntStateOf(initialAlarm?.hour ?: 7) }
     var minute by remember { mutableIntStateOf(initialAlarm?.minute ?: 30) }
@@ -56,6 +64,23 @@ fun AlarmEditDialog(
     var daysBitmask by remember { mutableIntStateOf(initialAlarm?.daysBitmask ?: 0) }
     var isVibrate by remember { mutableStateOf(initialAlarm?.isVibrate ?: true) }
     var snoozeMinutes by remember { mutableIntStateOf(initialAlarm?.snoozeMinutes ?: 10) }
+
+    val rawTarget = initialAlarm?.targetDevice ?: ""
+    var targetType by remember {
+        mutableStateOf(
+            when {
+                rawTarget.isBlank() || rawTarget == "本机" -> "本机"
+                rawTarget == "全部设备" -> "全部设备"
+                rawTarget.startsWith("来自 ") -> "本机"
+                else -> "指定设备"
+            }
+        )
+    }
+    var customDeviceName by remember {
+        mutableStateOf(
+            if (rawTarget != "本机" && rawTarget != "全部设备" && !rawTarget.startsWith("来自 ")) rawTarget else ""
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -186,12 +211,56 @@ fun AlarmEditDialog(
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 5. 设给谁 (目标设备)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "设给谁",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        ShortcutChip(text = "本机", isSelected = targetType == "本机") {
+                            targetType = "本机"
+                        }
+                        ShortcutChip(text = "全部设备", isSelected = targetType == "全部设备") {
+                            targetType = "全部设备"
+                        }
+                        ShortcutChip(text = "指定设备", isSelected = targetType == "指定设备") {
+                            targetType = "指定设备"
+                        }
+                    }
+                }
+
+                if (targetType == "指定设备") {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = customDeviceName,
+                        onValueChange = { customDeviceName = it },
+                        label = { Text("目标设备名称") },
+                        placeholder = { Text("如：卧室手机、客厅平板") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    onSave(hour, minute, label, daysBitmask, isVibrate, snoozeMinutes)
+                    val finalTarget = when (targetType) {
+                        "本机" -> "本机"
+                        "全部设备" -> "全部设备"
+                        "指定设备" -> customDeviceName.trim().ifEmpty { "全部设备" }
+                        else -> "本机"
+                    }
+                    onSave(hour, minute, label, daysBitmask, isVibrate, snoozeMinutes, finalTarget)
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = FossifyOrangePrimary)
             ) {

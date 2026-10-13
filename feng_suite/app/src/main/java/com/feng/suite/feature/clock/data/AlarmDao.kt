@@ -1,4 +1,4 @@
-﻿package com.feng.suite.feature.clock.data
+package com.feng.suite.feature.clock.data
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.Flow
 interface AlarmDao {
     @Query("SELECT * FROM alarms ORDER BY hour ASC, minute ASC")
     fun getAllAlarms(): Flow<List<AlarmEntity>>
+
+    @Query("SELECT * FROM alarms ORDER BY hour ASC, minute ASC")
+    suspend fun getAllAlarmsList(): List<AlarmEntity>
 
     @Query("SELECT * FROM alarms WHERE isEnabled = 1")
     suspend fun getEnabledAlarms(): List<AlarmEntity>

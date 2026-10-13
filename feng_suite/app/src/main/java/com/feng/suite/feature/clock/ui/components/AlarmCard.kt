@@ -1,4 +1,4 @@
-﻿package com.feng.suite.feature.clock.ui.components
+package com.feng.suite.feature.clock.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -73,15 +73,50 @@ fun AlarmCard(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
-            // 顶栏：标签 (如果有)
-            if (alarm.label.isNotBlank()) {
-                Text(
-                    text = alarm.label,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = FossifyOrangePrimary.copy(alpha = alpha),
-                    modifier = Modifier.padding(bottom = 2.dp)
-                )
+            // 顶栏：标签 (如果有) 与目标/来源设备徽章
+            if (alarm.label.isNotBlank() || (alarm.targetDevice.isNotBlank() && alarm.targetDevice != "本机")) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (alarm.label.isNotBlank()) {
+                        Text(
+                            text = alarm.label,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = FossifyOrangePrimary.copy(alpha = alpha)
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.width(1.dp))
+                    }
+
+                    if (alarm.targetDevice.isNotBlank() && alarm.targetDevice != "本机") {
+                        val badgeText = if (alarm.targetDevice.startsWith("来自 ")) {
+                            alarm.targetDevice
+                        } else if (alarm.targetDevice == "全部设备") {
+                            "广播: 全部设备"
+                        } else {
+                            "发往: ${alarm.targetDevice}"
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(FossifyOrangePrimary.copy(alpha = 0.15f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = badgeText,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = FossifyOrangePrimary.copy(alpha = alpha)
+                            )
+                        }
+                    }
+                }
             }
 
             // 主栏：超大时间 + 开关

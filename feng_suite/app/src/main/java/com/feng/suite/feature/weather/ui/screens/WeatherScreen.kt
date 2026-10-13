@@ -59,7 +59,6 @@ import com.feng.suite.feature.weather.ui.components.CityDialog
 import com.feng.suite.feature.weather.ui.components.CurrentWeatherSection
 import com.feng.suite.feature.weather.ui.components.DailyForecastCard
 import com.feng.suite.feature.weather.ui.components.HourlyForecastCard
-import com.feng.suite.feature.weather.ui.components.MetricsGridCard
 import com.feng.suite.feature.weather.ui.viewmodel.WeatherUiState
 import com.feng.suite.feature.weather.ui.viewmodel.WeatherViewModel
 import com.feng.suite.ui.dashboard.getWorldClockCity
@@ -528,11 +527,6 @@ private fun WeatherContent(data: WeatherData) {
         // 3. 未来 7 天预报卡片
         DailyForecastCard(dailyList = data.dailyList)
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // 4. 核心气象指标网格 (湿度/风速/紫外线/气压)
-        MetricsGridCard(data = data)
-
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }

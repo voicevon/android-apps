@@ -28,10 +28,12 @@ desktop.ini
 # Android & Gradle 通用忽略 (对所有子 App 生效)
 # ==========================================
 
-# Gradle 缓存与运行时
+# Gradle & Kotlin 编译缓存与运行时
 .gradle/
 **/build/
 **/.gradle/
+.kotlin/
+**/.kotlin/
 
 # Android 本地 SDK 路径配置 (绝不可提交)
 local.properties

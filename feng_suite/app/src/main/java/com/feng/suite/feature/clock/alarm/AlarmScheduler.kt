@@ -89,6 +89,8 @@ class AlarmScheduler(private val context: Context) {
         alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
     }
 
+    fun cancel(alarm: AlarmEntity) = cancel(alarm.id)
+
     fun cancel(alarmId: Long) {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             action = AlarmReceiver.ACTION_ALARM_TRIGGER

@@ -190,7 +190,8 @@ fun AlarmScreen(
                                     label = alarm.label,
                                     daysBitmask = newBitmask,
                                     isVibrate = alarm.isVibrate,
-                                    snoozeMinutes = alarm.snoozeMinutes
+                                    snoozeMinutes = alarm.snoozeMinutes,
+                                    targetDevice = alarm.targetDevice
                                 )
                             }
                         )
@@ -204,7 +205,7 @@ fun AlarmScreen(
         AlarmEditDialog(
             initialAlarm = editingAlarm,
             onDismiss = { showEditDialog = false },
-            onSave = { hour, minute, label, daysBitmask, isVibrate, snoozeMinutes ->
+            onSave = { hour, minute, label, daysBitmask, isVibrate, snoozeMinutes, targetDevice ->
                 viewModel.saveAlarm(
                     id = editingAlarm?.id ?: 0L,
                     hour = hour,
@@ -212,7 +213,8 @@ fun AlarmScreen(
                     label = label,
                     daysBitmask = daysBitmask,
                     isVibrate = isVibrate,
-                    snoozeMinutes = snoozeMinutes
+                    snoozeMinutes = snoozeMinutes,
+                    targetDevice = targetDevice
                 )
                 showEditDialog = false
             }

@@ -15,11 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Air
-import androidx.compose.material.icons.outlined.Grain
-import androidx.compose.material.icons.outlined.WaterDrop
-import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -95,25 +90,25 @@ fun CurrentWeatherSection(
             Spacer(modifier = Modifier.width(14.dp))
 
             Column(
-                verticalArrangement = Arrangement.spacedBy(3.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalAlignment = Alignment.Start
             ) {
                 Text(
-                    text = "↑ ${data.maxTemp}°",
-                    fontSize = 14.5.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFFFCA5A5)
-                )
-                Text(
-                    text = "↓ ${data.minTemp}°",
-                    fontSize = 14.5.sp,
+                    text = "湿度 ${data.humidity}%",
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color(0xFF93C5FD)
                 )
                 Text(
-                    text = "体感 ${data.apparentTemp}°",
+                    text = "风速 ${data.windSpeed}km/h",
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Normal,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFFA7F3D0)
+                )
+                Text(
+                    text = "PM2.5 ${data.pm25.toInt()}",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
                     color = TextWhiteSecondary
                 )
             }
@@ -320,142 +315,3 @@ fun DailyForecastCard(
     }
 }
 
-@Composable
-fun MetricsGridCard(
-    data: WeatherData,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            MetricItem(
-                icon = Icons.Outlined.WaterDrop,
-                title = "空气湿度",
-                valueNumber = "${data.humidity}",
-                valueUnit = "%",
-                subtitle = if (data.humidity > 70) "偏潮湿" else "舒适",
-                modifier = Modifier.weight(1f)
-            )
-
-            MetricItem(
-                icon = Icons.Outlined.Air,
-                title = "实时风速",
-                valueNumber = "${data.windSpeed}",
-                valueUnit = "km/h",
-                subtitle = "微风徐拂",
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            MetricItem(
-                icon = Icons.Outlined.WbSunny,
-                title = "紫外线指数",
-                valueNumber = String.format("%.1f", data.uvIndex),
-                valueUnit = "UV",
-                subtitle = if (data.uvIndex >= 6.0) "需注意防晒" else "适中",
-                modifier = Modifier.weight(1f)
-            )
-
-            val pm25Val = data.pm25.toInt()
-            val pm25Quality = when {
-                pm25Val <= 35 -> "空气优质"
-                pm25Val <= 75 -> "空气良好"
-                pm25Val <= 115 -> "轻度污染"
-                pm25Val <= 150 -> "中度污染"
-                else -> "重度污染"
-            }
-
-            MetricItem(
-                icon = Icons.Outlined.Grain,
-                title = "PM2.5",
-                valueNumber = "$pm25Val",
-                valueUnit = "μg/m³",
-                subtitle = pm25Quality,
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun MetricItem(
-    icon: ImageVector,
-    title: String,
-    valueNumber: String,
-    valueUnit: String = "",
-    subtitle: String,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(CardBackground)
-            .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
-            .padding(horizontal = 12.dp, vertical = 9.dp)
-    ) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = TextWhiteSecondary,
-                    modifier = Modifier.size(15.dp)
-                )
-                Spacer(modifier = Modifier.width(5.dp))
-                Text(
-                    text = title,
-                    fontSize = 11.sp,
-                    color = TextWhiteSecondary,
-                    maxLines = 1
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // 数值与单位同排紧凑对齐，绝对不换行
-            Row(
-                verticalAlignment = Alignment.Bottom,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = valueNumber,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextWhitePrimary,
-                    maxLines = 1,
-                    softWrap = false
-                )
-                if (valueUnit.isNotBlank()) {
-                    Spacer(modifier = Modifier.width(3.dp))
-                    Text(
-                        text = valueUnit,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = TextWhiteSecondary,
-                        modifier = Modifier.padding(bottom = 1.dp),
-                        maxLines = 1,
-                        softWrap = false
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Text(
-                text = subtitle,
-                fontSize = 10.sp,
-                color = TextWhiteTertiary,
-                maxLines = 1
-            )
-        }
-    }
-}

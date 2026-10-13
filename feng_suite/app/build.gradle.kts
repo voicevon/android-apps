@@ -72,6 +72,9 @@ dependencies {
     // HTTP Client & Network
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // MQTT Client
+    implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
+
     // WorkManager (后台静默同步)
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 

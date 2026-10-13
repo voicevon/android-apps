@@ -1,8 +1,9 @@
-﻿package com.feng.suite.feature.clock.ui.viewmodel
+package com.feng.suite.feature.clock.ui.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.feng.suite.core.mqtt.MqttManager
 import com.feng.suite.feature.clock.alarm.AlarmScheduler
 import com.feng.suite.feature.clock.data.AlarmDatabase
 import com.feng.suite.feature.clock.data.AlarmEntity
@@ -39,11 +40,15 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = null
         )
 
-        // 初始化时确保所有开启的闹钟都在系统 AlarmManager (setAlarmClock) 中注册
+        // 初始化时确保所有开启且属于本机的闹钟都在系统 AlarmManager (setAlarmClock) 中注册
         viewModelScope.launch {
             val enabledAlarms = db.alarmDao().getEnabledAlarms()
+            val myDevice = MqttManager.config.value.deviceName
             for (alarm in enabledAlarms) {
-                scheduler.schedule(alarm)
+                val isForLocal = alarm.targetDevice.isBlank() || alarm.targetDevice == "本机" || alarm.targetDevice == "全部设备" || alarm.targetDevice.startsWith("来自 ") || alarm.targetDevice.equals(myDevice, ignoreCase = true)
+                if (isForLocal) {
+                    scheduler.schedule(alarm)
+                }
             }
         }
     }
@@ -52,10 +57,17 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val updated = alarm.copy(isEnabled = !alarm.isEnabled)
             repository.updateAlarm(updated)
-            if (updated.isEnabled) {
-                scheduler.schedule(updated)
-            } else {
-                scheduler.cancel(updated.id)
+            val myDevice = MqttManager.config.value.deviceName
+            val isForLocal = updated.targetDevice.isBlank() || updated.targetDevice == "本机" || updated.targetDevice == "全部设备" || updated.targetDevice.startsWith("来自 ") || updated.targetDevice.equals(myDevice, ignoreCase = true)
+            if (isForLocal) {
+                if (updated.isEnabled) {
+                    scheduler.schedule(updated)
+                } else {
+                    scheduler.cancel(updated.id)
+                }
+            }
+            if (updated.targetDevice.isNotBlank() && updated.targetDevice != "本机") {
+                MqttManager.publishAlarm(updated, "TOGGLE")
             }
         }
     }
@@ -67,7 +79,8 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         label: String,
         daysBitmask: Int,
         isVibrate: Boolean,
-        snoozeMinutes: Int
+        snoozeMinutes: Int,
+        targetDevice: String = ""
     ) {
         viewModelScope.launch {
             val alarm = AlarmEntity(
@@ -78,15 +91,28 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
                 daysBitmask = daysBitmask,
                 label = label.trim(),
                 isVibrate = isVibrate,
-                snoozeMinutes = snoozeMinutes
+                snoozeMinutes = snoozeMinutes,
+                targetDevice = targetDevice
             )
 
-            if (id == 0L) {
+            val savedAlarm = if (id == 0L) {
                 val newId = repository.insertAlarm(alarm)
-                scheduler.schedule(alarm.copy(id = newId))
+                alarm.copy(id = newId)
             } else {
                 repository.updateAlarm(alarm)
-                scheduler.schedule(alarm)
+                alarm
+            }
+
+            val myDevice = MqttManager.config.value.deviceName
+            val isForLocal = targetDevice.isBlank() || targetDevice == "本机" || targetDevice == "全部设备" || targetDevice.startsWith("来自 ") || targetDevice.equals(myDevice, ignoreCase = true)
+            if (isForLocal) {
+                scheduler.schedule(savedAlarm)
+            } else {
+                scheduler.cancel(savedAlarm.id)
+            }
+
+            if (targetDevice.isNotBlank() && targetDevice != "本机" && !targetDevice.startsWith("来自 ")) {
+                MqttManager.publishAlarm(savedAlarm, "CREATE_OR_UPDATE")
             }
         }
     }
@@ -95,6 +121,9 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             scheduler.cancel(alarm.id)
             repository.deleteAlarm(alarm)
+            if (alarm.targetDevice.isNotBlank() && alarm.targetDevice != "本机") {
+                MqttManager.publishAlarm(alarm, "DELETE")
+            }
         }
     }
 }
