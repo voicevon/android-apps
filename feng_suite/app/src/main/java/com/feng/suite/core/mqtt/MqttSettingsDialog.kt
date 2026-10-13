@@ -160,7 +160,7 @@ fun MqttSettingsDialog(
                     value = host,
                     onValueChange = { host = it },
                     label = { Text("MQTT 服务器地址 (Host)") },
-                    placeholder = { Text("如：broker.emqx.io 或局域网 IP") },
+                    placeholder = { Text("如：voicevon.vicp.io") },
                     leadingIcon = {
                         Icon(Icons.Outlined.Dns, contentDescription = null)
                     },

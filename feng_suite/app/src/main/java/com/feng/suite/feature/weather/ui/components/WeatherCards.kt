@@ -15,6 +15,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Air
+import androidx.compose.material.icons.outlined.Grain
+import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -49,11 +53,74 @@ fun CurrentWeatherSection(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // 左大栏：图标在上方，天气描述在下方
+        // 1. 最左模组块：3 行小指标（纯符号与数值，无汉字）
+        Column(
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            // 湿度 (水滴符号 + 数值)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.WaterDrop,
+                    contentDescription = "湿度",
+                    tint = Color(0xFF60A5FA),
+                    modifier = Modifier.size(15.dp)
+                )
+                Text(
+                    text = "${data.humidity}%",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF60A5FA)
+                )
+            }
+
+            // 风速 (气流符号 + 数值)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Air,
+                    contentDescription = "风速",
+                    tint = Color(0xFF34D399),
+                    modifier = Modifier.size(15.dp)
+                )
+                Text(
+                    text = "${data.windSpeed}km/h",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF34D399)
+                )
+            }
+
+            // PM2.5 (微粒符号 + 数值)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Grain,
+                    contentDescription = "PM2.5",
+                    tint = Color(0xFFFBBF24),
+                    modifier = Modifier.size(15.dp)
+                )
+                Text(
+                    text = "${data.pm25.toInt()}",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFFFBBF24)
+                )
+            }
+        }
+
+        // 2. 中间模组块：天气图标与天气描述
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
@@ -62,57 +129,25 @@ fun CurrentWeatherSection(
                 imageVector = info.icon,
                 contentDescription = info.description,
                 tint = TextWhitePrimary,
-                modifier = Modifier.size(62.dp)
+                modifier = Modifier.size(56.dp)
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = info.description,
-                fontSize = 18.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
                 color = TextWhitePrimary
             )
         }
 
-        Spacer(modifier = Modifier.width(26.dp))
-
-        // 右大栏：核心温度区（左侧实时超大温度，右侧分三行最高/最低/体感）
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "${data.currentTemp}°",
-                fontSize = 72.sp,
-                fontWeight = FontWeight.Light,
-                color = TextWhitePrimary,
-                letterSpacing = (-2).sp
-            )
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Text(
-                    text = "湿度 ${data.humidity}%",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF93C5FD)
-                )
-                Text(
-                    text = "风速 ${data.windSpeed}km/h",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFFA7F3D0)
-                )
-                Text(
-                    text = "PM2.5 ${data.pm25.toInt()}",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextWhiteSecondary
-                )
-            }
-        }
+        // 3. 最右模组块：超大实时温度
+        Text(
+            text = "${data.currentTemp}°",
+            fontSize = 72.sp,
+            fontWeight = FontWeight.Light,
+            color = TextWhitePrimary,
+            letterSpacing = (-2).sp
+        )
     }
 }
 

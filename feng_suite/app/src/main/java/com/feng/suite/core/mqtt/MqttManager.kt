@@ -9,12 +9,16 @@ import android.widget.Toast
 import com.feng.suite.feature.clock.alarm.AlarmScheduler
 import com.feng.suite.feature.clock.data.AlarmDatabase
 import com.feng.suite.feature.clock.data.AlarmEntity
+import com.feng.suite.feature.chat.data.ChatDatabase
+import com.feng.suite.feature.chat.data.ChatMessageEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended
@@ -33,10 +37,10 @@ enum class MqttConnectionStatus {
 }
 
 data class MqttConfig(
-    val serverHost: String = "broker.emqx.io",
+    val serverHost: String = "voicevon.vicp.io",
     val serverPort: Int = 1883,
     val deviceName: String = "设备-${Build.MODEL.takeLast(4)}",
-    val isEnabled: Boolean = false
+    val isEnabled: Boolean = true
 )
 
 object MqttManager {
@@ -50,10 +54,14 @@ object MqttManager {
 
     private const val TOPIC_BROADCAST = "feng_suite/alarm/broadcast"
     private const val TOPIC_DEVICE_PREFIX = "feng_suite/alarm/device/"
+    private const val TOPIC_CHAT_BROADCAST = "feng_suite/chat/broadcast"
+    private const val TOPIC_CHAT_DEVICE_PREFIX = "feng_suite/chat/device/"
+    private const val TOPIC_HEARTBEAT = "feng_suite/heartbeat"
 
     private var appContext: Context? = null
     private var mqttClient: MqttClient? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var heartbeatJob: kotlinx.coroutines.Job? = null
 
     private val _connectionStatus = MutableStateFlow(MqttConnectionStatus.DISCONNECTED)
     val connectionStatus: StateFlow<MqttConnectionStatus> = _connectionStatus.asStateFlow()
@@ -73,10 +81,13 @@ object MqttManager {
     private fun loadConfig(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val defaultDeviceName = "设备-${Build.MODEL.takeLast(4).ifEmpty { "A" }}"
-        val host = prefs.getString(KEY_HOST, "broker.emqx.io") ?: "broker.emqx.io"
+        var host = prefs.getString(KEY_HOST, "voicevon.vicp.io") ?: "voicevon.vicp.io"
+        if (host == "broker.emqx.io") {
+            host = "voicevon.vicp.io"
+        }
         val port = prefs.getInt(KEY_PORT, 1883)
         val deviceName = prefs.getString(KEY_DEVICE_NAME, defaultDeviceName) ?: defaultDeviceName
-        val isEnabled = prefs.getBoolean(KEY_ENABLED, false)
+        val isEnabled = if (prefs.contains(KEY_ENABLED)) prefs.getBoolean(KEY_ENABLED, true) else true
 
         _config.value = MqttConfig(
             serverHost = host,
@@ -139,11 +150,13 @@ object MqttManager {
                         Log.d(TAG, "MQTT Connected successfully: $serverURI (reconnect=$reconnect)")
                         _connectionStatus.value = MqttConnectionStatus.CONNECTED
                         subscribeTopics(client, currentCfg.deviceName)
+                        startHeartbeatLoop()
                     }
 
                     override fun connectionLost(cause: Throwable?) {
                         Log.w(TAG, "MQTT Connection lost", cause)
                         _connectionStatus.value = MqttConnectionStatus.DISCONNECTED
+                        heartbeatJob?.cancel()
                     }
 
                     override fun messageArrived(topic: String?, message: MqttMessage?) {
@@ -173,19 +186,88 @@ object MqttManager {
             }
         } catch (_: Exception) {}
         mqttClient = null
+        heartbeatJob?.cancel()
         _connectionStatus.value = MqttConnectionStatus.DISCONNECTED
     }
 
     private fun subscribeTopics(client: MqttClient, deviceName: String) {
         try {
-            // 1. 订阅公共广播
+            // 1. 订阅公共闹钟广播与设备专属闹钟
             client.subscribe(TOPIC_BROADCAST, 1)
-            // 2. 订阅本设备专属直接下发 Topic
-            val directTopic = "$TOPIC_DEVICE_PREFIX$deviceName"
-            client.subscribe(directTopic, 1)
-            Log.d(TAG, "Subscribed to $TOPIC_BROADCAST and $directTopic")
+            val directAlarmTopic = "$TOPIC_DEVICE_PREFIX$deviceName"
+            client.subscribe(directAlarmTopic, 1)
+
+            // 2. 订阅公共即时消息广播与设备专属消息
+            client.subscribe(TOPIC_CHAT_BROADCAST, 1)
+            val directChatTopic = "$TOPIC_CHAT_DEVICE_PREFIX$deviceName"
+            client.subscribe(directChatTopic, 1)
+
+            Log.d(TAG, "Subscribed to topics: $TOPIC_BROADCAST, $directAlarmTopic, $TOPIC_CHAT_BROADCAST, $directChatTopic")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to subscribe topics", e)
+        }
+    }
+
+    fun publishChatMessage(chatMessage: ChatMessageEntity) {
+        if (!_config.value.isEnabled) return
+        val client = mqttClient ?: return
+        if (!client.isConnected) return
+
+        scope.launch {
+            try {
+                val json = JSONObject().apply {
+                    put("msgType", "CHAT")
+                    put("id", chatMessage.id)
+                    put("sender", chatMessage.sender)
+                    put("target", chatMessage.target)
+                    put("content", chatMessage.content)
+                    put("timestamp", chatMessage.timestamp)
+                }
+                val payload = json.toString().toByteArray(Charsets.UTF_8)
+                val message = MqttMessage(payload).apply { qos = 1 }
+
+                if (chatMessage.target != "全部设备" && chatMessage.target.isNotBlank()) {
+                    client.publish("$TOPIC_CHAT_DEVICE_PREFIX${chatMessage.target}", message)
+                } else {
+                    client.publish(TOPIC_CHAT_BROADCAST, message)
+                }
+                Log.d(TAG, "Published chat message: $json")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to publish chat message", e)
+            }
+        }
+    }
+
+    fun publishHeartbeat() {
+        if (!_config.value.isEnabled) return
+        val client = mqttClient ?: return
+        if (!client.isConnected) return
+
+        scope.launch {
+            try {
+                val json = JSONObject().apply {
+                    put("msgType", "HEARTBEAT")
+                    put("device", _config.value.deviceName)
+                    put("timestamp", System.currentTimeMillis())
+                    put("status", "ONLINE")
+                }
+                val payload = json.toString().toByteArray(Charsets.UTF_8)
+                val message = MqttMessage(payload).apply { qos = 1 }
+                client.publish(TOPIC_HEARTBEAT, message)
+                Log.d(TAG, "Published heartbeat: $json")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to publish heartbeat", e)
+            }
+        }
+    }
+
+    private fun startHeartbeatLoop() {
+        heartbeatJob?.cancel()
+        heartbeatJob = scope.launch {
+            while (isActive) {
+                publishHeartbeat()
+                delay(3600_000L) // 每 1 小时发送一次心跳
+            }
         }
     }
 
@@ -239,6 +321,47 @@ object MqttManager {
                 val bodyStr = String(message.payload, Charsets.UTF_8)
                 val json = JSONObject(bodyStr)
 
+                // 1. 判断是否为即时聊天消息 (CHAT)
+                val msgType = json.optString("msgType", "")
+                val isChatTopic = topic?.startsWith("feng_suite/chat") == true
+                if (msgType == "CHAT" || isChatTopic) {
+                    val sender = json.optString("sender", "")
+                    val target = json.optString("target", "全部设备")
+                    val content = json.optString("content", "")
+                    val id = json.optString("id", UUID.randomUUID().toString())
+                    val timestamp = json.optLong("timestamp", System.currentTimeMillis())
+                    val myDevice = _config.value.deviceName
+
+                    // 过滤本机自己发出的消息，避免回环
+                    if (sender.equals(myDevice, ignoreCase = true)) {
+                        return@launch
+                    }
+
+                    // 检查是否发送给本机或属于全部设备广播
+                    val isForMe = target == "全部设备" || target.isBlank() || target.equals(myDevice, ignoreCase = true)
+                    if (!isForMe) return@launch
+
+                    val entity = ChatMessageEntity(
+                        id = id,
+                        sender = sender,
+                        target = target,
+                        content = content,
+                        timestamp = timestamp,
+                        isFromMe = false
+                    )
+                    ChatDatabase.getInstance(context).chatMessageDao().insertMessage(entity)
+
+                    Handler(Looper.getMainLooper()).post {
+                        Toast.makeText(
+                            context,
+                            "[$sender]: $content",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    return@launch
+                }
+
+                // 2. 闹钟处理分支
                 val sourceDevice = json.optString("sourceDevice", "")
                 val targetDevice = json.optString("targetDevice", "全部设备")
                 val action = json.optString("action", "CREATE_OR_UPDATE")

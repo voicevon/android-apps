@@ -31,6 +31,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.feng.suite.core.mqtt.MqttSettingsDialog
+import com.feng.suite.feature.chat.ui.components.DashboardChatCard
+import com.feng.suite.feature.chat.ui.viewmodel.ChatViewModel
 import com.feng.suite.feature.clock.data.AlarmEntity
 import com.feng.suite.feature.clock.ui.viewmodel.AlarmViewModel
 import com.feng.suite.feature.todo.data.TodoItem
@@ -51,6 +53,7 @@ fun DashboardScreen(
     weatherViewModel: WeatherViewModel,
     alarmViewModel: AlarmViewModel,
     todoViewModel: TodoViewModel,
+    chatViewModel: ChatViewModel,
     onNavigateTo: (NavItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -222,6 +225,13 @@ fun DashboardScreen(
             onToggleComplete = { todo -> todoViewModel.toggleCompleted(todo) },
             onAddTodo = { showAddTodoDialog = true },
             onClick = { onNavigateTo(NavItem.TODO) }
+        )
+
+        // 4. 第三行：即时消息卡片 (纯净输入框 + 发送，点击空白处或图标进入全屏聊天历史)
+        DashboardChatCard(
+            onSendMessage = { text -> chatViewModel.sendMessage(text) },
+            onClick = { onNavigateTo(NavItem.CHAT) },
+            modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(20.dp))

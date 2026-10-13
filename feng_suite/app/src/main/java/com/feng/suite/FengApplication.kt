@@ -4,6 +4,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import com.feng.suite.core.mqtt.HeartbeatWorker
 import com.feng.suite.core.mqtt.MqttManager
 import com.feng.suite.feature.weather.work.WeatherUpdateWorker
 
@@ -14,6 +15,8 @@ class FengApplication : Application() {
         createNotificationChannels()
         // 注册天气每小时后台同步
         WeatherUpdateWorker.enqueuePeriodicWork(this)
+        // 注册设备每小时 MQTT 在线心跳包
+        HeartbeatWorker.enqueuePeriodicWork(this)
         // 初始化 MQTT 跨设备同步
         MqttManager.init(this)
     }

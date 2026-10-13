@@ -29,23 +29,24 @@ val TextWhitePrimary = Color(0xFFF8FAFC)
 val TextWhiteSecondary = Color(0xFF94A3B8)
 val TextWhiteTertiary = Color(0xFF64748B)
 
-val CardBackground = Color(0x33FFFFFF)
-val CardBorder = Color(0x2AFFFFFF)
+// 卡片容器与高反差边框（对齐 TodoList 的高对比度深色质感）
+val CardBackground = Color(0xFF1E293B)
+val CardBorder = Color(0xFF334155)
 
-// 沉浸式天气渐变色盘
+// 沉浸式高反差天气渐变底色（深邃背景，让卡片与文字极度醒目）
 val SunnyGradient = Brush.verticalGradient(
-    colors = listOf(Color(0xFF3A88E9), Color(0xFF67B0F8), Color(0xFF8EC5FC))
+    colors = listOf(Color(0xFF0F172A), Color(0xFF172554), Color(0xFF1E3A8A))
 )
 
 val NightGradient = Brush.verticalGradient(
-    colors = listOf(Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364))
+    colors = listOf(Color(0xFF020617), Color(0xFF0F172A), Color(0xFF1E1B4B))
 )
 
 val CloudyGradient = Brush.verticalGradient(
-    colors = listOf(Color(0xFF536976), Color(0xFF708796), Color(0xFF8B9DA8))
+    colors = listOf(Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155))
 )
 
 val RainyGradient = Brush.verticalGradient(
-    colors = listOf(Color(0xFF37474F), Color(0xFF455A64), Color(0xFF546E7A))
+    colors = listOf(Color(0xFF090D16), Color(0xFF0F172A), Color(0xFF1E293B))
 )
 

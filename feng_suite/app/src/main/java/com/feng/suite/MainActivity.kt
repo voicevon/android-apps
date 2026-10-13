@@ -19,6 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.feng.suite.feature.clock.ui.screens.AlarmScreen
 import com.feng.suite.feature.clock.ui.viewmodel.AlarmViewModel
+import com.feng.suite.feature.chat.ui.screens.ChatScreen
+import com.feng.suite.feature.chat.ui.viewmodel.ChatViewModel
 import com.feng.suite.feature.todo.ui.TodoListScreen
 import com.feng.suite.feature.todo.ui.TodoViewModel
 import com.feng.suite.feature.weather.ui.screens.WeatherScreen
@@ -33,6 +35,7 @@ class MainActivity : ComponentActivity() {
     private val weatherViewModel: WeatherViewModel by viewModels()
     private val alarmViewModel: AlarmViewModel by viewModels()
     private val todoViewModel: TodoViewModel by viewModels()
+    private val chatViewModel: ChatViewModel by viewModels()
 
     private val requestLocationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -52,6 +55,7 @@ class MainActivity : ComponentActivity() {
                     weatherViewModel = weatherViewModel,
                     alarmViewModel = alarmViewModel,
                     todoViewModel = todoViewModel,
+                    chatViewModel = chatViewModel,
                     onRequestLocationPermission = {
                         requestLocationPermissionLauncher.launch(
                             arrayOf(
@@ -71,6 +75,7 @@ private fun MainContainerScreen(
     weatherViewModel: WeatherViewModel,
     alarmViewModel: AlarmViewModel,
     todoViewModel: TodoViewModel,
+    chatViewModel: ChatViewModel,
     onRequestLocationPermission: () -> Unit
 ) {
     var currentItem by rememberSaveable { mutableStateOf(NavItem.DASHBOARD) }
@@ -95,6 +100,7 @@ private fun MainContainerScreen(
                         weatherViewModel = weatherViewModel,
                         alarmViewModel = alarmViewModel,
                         todoViewModel = todoViewModel,
+                        chatViewModel = chatViewModel,
                         onNavigateTo = { currentItem = it }
                     )
                     NavItem.CLOCK -> AlarmScreen(
@@ -108,6 +114,10 @@ private fun MainContainerScreen(
                     )
                     NavItem.TODO -> TodoListScreen(
                         viewModel = todoViewModel,
+                        onBack = { currentItem = NavItem.DASHBOARD }
+                    )
+                    NavItem.CHAT -> ChatScreen(
+                        viewModel = chatViewModel,
                         onBack = { currentItem = NavItem.DASHBOARD }
                     )
                 }
