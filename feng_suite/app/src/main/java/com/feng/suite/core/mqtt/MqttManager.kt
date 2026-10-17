@@ -11,6 +11,7 @@ import com.feng.suite.feature.clock.data.AlarmDatabase
 import com.feng.suite.feature.clock.data.AlarmEntity
 import com.feng.suite.feature.chat.data.ChatDatabase
 import com.feng.suite.feature.chat.data.ChatMessageEntity
+import com.feng.suite.feature.chat.data.MessageDeliveryStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended
 import org.eclipse.paho.client.mqttv3.MqttClient
@@ -235,6 +237,7 @@ object MqttManager {
                         _connectionStatus.value = MqttConnectionStatus.CONNECTED
                         subscribeTopics(client, currentCfg.deviceName)
                         startHeartbeatLoop()
+                        resendPendingChatMessages()
                     }
 
                     override fun connectionLost(cause: Throwable?) {
@@ -295,45 +298,71 @@ object MqttManager {
         }
     }
 
-    fun publishChatMessage(chatMessage: ChatMessageEntity) {
-        if (!_config.value.isEnabled) return
-        val client = mqttClient ?: return
-        if (!client.isConnected) return
+    suspend fun publishChatMessage(chatMessage: ChatMessageEntity): Boolean = withContext(Dispatchers.IO) {
+        if (!_config.value.isEnabled) return@withContext false
+        val client = mqttClient ?: return@withContext false
+        if (!client.isConnected) return@withContext false
 
+        return@withContext try {
+            val json = JSONObject().apply {
+                put("msgType", "CHAT")
+                put("id", chatMessage.id)
+                put("sender", chatMessage.sender)
+                put("target", chatMessage.target)
+                put("content", chatMessage.content)
+                put("timestamp", chatMessage.timestamp)
+            }
+            val payload = json.toString().toByteArray(Charsets.UTF_8)
+            val message = MqttMessage(payload).apply { qos = 1 }
+
+            val targetTopic = if (chatMessage.target != "全部设备" && chatMessage.target.isNotBlank()) {
+                "$TOPIC_CHAT_DEVICE_PREFIX${chatMessage.target}"
+            } else {
+                TOPIC_CHAT_BROADCAST
+            }
+            client.publish(targetTopic, message)
+            Log.d(TAG, "Published chat message: $json")
+
+            addLog(
+                MqttLogEntry(
+                    topic = targetTopic,
+                    sender = chatMessage.sender,
+                    target = chatMessage.target,
+                    msgType = "CHAT",
+                    payload = json.toString(),
+                    timestamp = chatMessage.timestamp,
+                    isOutgoing = true
+                )
+            )
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to publish chat message", e)
+            false
+        }
+    }
+
+    fun resendPendingChatMessages() {
+        val context = appContext ?: return
         scope.launch {
             try {
-                val json = JSONObject().apply {
-                    put("msgType", "CHAT")
-                    put("id", chatMessage.id)
-                    put("sender", chatMessage.sender)
-                    put("target", chatMessage.target)
-                    put("content", chatMessage.content)
-                    put("timestamp", chatMessage.timestamp)
-                }
-                val payload = json.toString().toByteArray(Charsets.UTF_8)
-                val message = MqttMessage(payload).apply { qos = 1 }
+                val dao = ChatDatabase.getInstance(context).chatMessageDao()
+                val pendingList = dao.getUnsentMessages()
+                if (pendingList.isEmpty()) return@launch
 
-                val targetTopic = if (chatMessage.target != "全部设备" && chatMessage.target.isNotBlank()) {
-                    "$TOPIC_CHAT_DEVICE_PREFIX${chatMessage.target}"
-                } else {
-                    TOPIC_CHAT_BROADCAST
+                Log.d(TAG, "Found ${pendingList.size} unsent chat messages, starting auto-resend...")
+                for (msg in pendingList) {
+                    val success = publishChatMessage(msg)
+                    if (success) {
+                        dao.updateDeliveryStatus(msg.id, MessageDeliveryStatus.SENT)
+                        Log.d(TAG, "Auto-resend succeeded for msg id=${msg.id}")
+                    } else {
+                        dao.updateDeliveryStatus(msg.id, MessageDeliveryStatus.FAILED)
+                        Log.w(TAG, "Auto-resend failed for msg id=${msg.id}, aborting remaining batch")
+                        break
+                    }
                 }
-                client.publish(targetTopic, message)
-                Log.d(TAG, "Published chat message: $json")
-
-                addLog(
-                    MqttLogEntry(
-                        topic = targetTopic,
-                        sender = chatMessage.sender,
-                        target = chatMessage.target,
-                        msgType = "CHAT",
-                        payload = json.toString(),
-                        timestamp = chatMessage.timestamp,
-                        isOutgoing = true
-                    )
-                )
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to publish chat message", e)
+                Log.e(TAG, "Error in resendPendingChatMessages", e)
             }
         }
     }

@@ -20,6 +20,18 @@ interface ChatMessageDao {
     @Query("SELECT * FROM chat_messages ORDER BY sender ASC, timestamp ASC")
     fun getAllMessagesBySender(): Flow<List<ChatMessageEntity>>
 
+    @Query("SELECT * FROM chat_messages WHERE id = :id LIMIT 1")
+    suspend fun getMessageById(id: String): ChatMessageEntity?
+
+    @Query("SELECT * FROM chat_messages WHERE isFromMe = 1 AND (deliveryStatus = :statusFailed OR deliveryStatus = :statusSending) ORDER BY timestamp ASC")
+    suspend fun getUnsentMessages(
+        statusFailed: MessageDeliveryStatus = MessageDeliveryStatus.FAILED,
+        statusSending: MessageDeliveryStatus = MessageDeliveryStatus.SENDING
+    ): List<ChatMessageEntity>
+
+    @Query("UPDATE chat_messages SET deliveryStatus = :status WHERE id = :id")
+    suspend fun updateDeliveryStatus(id: String, status: MessageDeliveryStatus)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMessage(message: ChatMessageEntity)
 

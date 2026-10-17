@@ -3,6 +3,12 @@ package com.feng.suite.feature.chat.data
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+enum class MessageDeliveryStatus {
+    SENDING,
+    SENT,
+    FAILED
+}
+
 @Entity(tableName = "chat_messages")
 data class ChatMessageEntity(
     @PrimaryKey
@@ -11,5 +17,7 @@ data class ChatMessageEntity(
     val target: String = "全部设备",
     val content: String,
     val timestamp: Long = System.currentTimeMillis(),
-    val isFromMe: Boolean = false
+    val isFromMe: Boolean = false,
+    val deliveryStatus: MessageDeliveryStatus = MessageDeliveryStatus.SENT
 )
+

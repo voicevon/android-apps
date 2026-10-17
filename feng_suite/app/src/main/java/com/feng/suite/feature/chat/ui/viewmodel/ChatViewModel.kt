@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.feng.suite.core.mqtt.MqttManager
 import com.feng.suite.feature.chat.data.ChatDatabase
 import com.feng.suite.feature.chat.data.ChatMessageEntity
+import com.feng.suite.feature.chat.data.MessageDeliveryStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -42,12 +43,27 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             target = target,
             content = trimmed,
             timestamp = System.currentTimeMillis(),
-            isFromMe = true
+            isFromMe = true,
+            deliveryStatus = MessageDeliveryStatus.SENDING
         )
 
         viewModelScope.launch {
             dao.insertMessage(entity)
-            MqttManager.publishChatMessage(entity)
+            val success = MqttManager.publishChatMessage(entity)
+            val finalStatus = if (success) MessageDeliveryStatus.SENT else MessageDeliveryStatus.FAILED
+            dao.updateDeliveryStatus(entity.id, finalStatus)
+        }
+    }
+
+    fun retryMessage(id: String) {
+        viewModelScope.launch {
+            val entity = dao.getMessageById(id) ?: return@launch
+            if (!entity.isFromMe) return@launch
+
+            dao.updateDeliveryStatus(id, MessageDeliveryStatus.SENDING)
+            val success = MqttManager.publishChatMessage(entity)
+            val finalStatus = if (success) MessageDeliveryStatus.SENT else MessageDeliveryStatus.FAILED
+            dao.updateDeliveryStatus(id, finalStatus)
         }
     }
 

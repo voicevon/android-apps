@@ -16,6 +16,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Info
@@ -33,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.feng.suite.core.mqtt.MqttConnectionStatus
 import com.feng.suite.core.mqtt.MqttManager
 import com.feng.suite.feature.chat.data.ChatMessageEntity
+import com.feng.suite.feature.chat.data.MessageDeliveryStatus
 import com.feng.suite.feature.chat.ui.viewmodel.ChatViewModel
 import com.feng.suite.ui.theme.*
 import java.text.SimpleDateFormat
@@ -247,7 +250,8 @@ fun ChatScreen(
                     items(messages, key = { it.id }) { msg ->
                         MessageBubble(
                             message = msg,
-                            onLongClick = { messageToDelete = msg }
+                            onLongClick = { messageToDelete = msg },
+                            onRetry = { viewModel.retryMessage(msg.id) }
                         )
                     }
                 }
@@ -389,7 +393,8 @@ private fun MqttProtocolWikiDialog(onDismiss: () -> Unit) {
 @Composable
 private fun MessageBubble(
     message: ChatMessageEntity,
-    onLongClick: () -> Unit
+    onLongClick: () -> Unit,
+    onRetry: () -> Unit
 ) {
     val isMe = message.isFromMe
     val timeFormatted = remember(message.timestamp) {
@@ -401,7 +406,11 @@ private fun MessageBubble(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(
-                onClick = {},
+                onClick = {
+                    if (isMe && message.deliveryStatus == MessageDeliveryStatus.FAILED) {
+                        onRetry()
+                    }
+                },
                 onLongClick = onLongClick
             ),
         horizontalAlignment = if (isMe) Alignment.End else Alignment.Start
@@ -432,10 +441,35 @@ private fun MessageBubble(
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF60A5FA)
                 )
+                when (message.deliveryStatus) {
+                    MessageDeliveryStatus.SENDING -> {
+                        Text(
+                            text = "发送中",
+                            fontSize = 10.sp,
+                            color = Color(0xFF93C5FD)
+                        )
+                    }
+                    MessageDeliveryStatus.FAILED -> {
+                        Text(
+                            text = "发送失败",
+                            fontSize = 10.sp,
+                            color = Color(0xFFEF4444),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    MessageDeliveryStatus.SENT -> {
+                        Icon(
+                            imageVector = Icons.Default.Done,
+                            contentDescription = "已发送",
+                            tint = Color(0xFF60A5FA),
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
             }
         }
 
-        // 气泡实体
+        // 气泡实体与状态微标
         val bubbleShape = if (isMe) {
             RoundedCornerShape(topStart = 16.dp, topEnd = 4.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
         } else {
@@ -450,19 +484,54 @@ private fun MessageBubble(
                 .border(1.dp, CardBorderDark, bubbleShape)
         }
 
-        Box(
-            modifier = Modifier
-                .widthIn(max = 280.dp)
-                .clip(bubbleShape)
-                .then(bubbleBackgroundModifier)
-                .padding(horizontal = 14.dp, vertical = 10.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start
         ) {
-            Text(
-                text = message.content,
-                fontSize = 14.5.sp,
-                color = TextWhitePrimary,
-                lineHeight = 20.sp
-            )
+            if (isMe) {
+                when (message.deliveryStatus) {
+                    MessageDeliveryStatus.SENDING -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .padding(end = 6.dp)
+                                .size(14.dp),
+                            strokeWidth = 2.dp,
+                            color = Color(0xFF93C5FD)
+                        )
+                    }
+                    MessageDeliveryStatus.FAILED -> {
+                        IconButton(
+                            onClick = onRetry,
+                            modifier = Modifier
+                                .padding(end = 2.dp)
+                                .size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ErrorOutline,
+                                contentDescription = "发送失败，点击重试",
+                                tint = Color(0xFFEF4444),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    MessageDeliveryStatus.SENT -> {}
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .widthIn(max = 280.dp)
+                    .clip(bubbleShape)
+                    .then(bubbleBackgroundModifier)
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    text = message.content,
+                    fontSize = 14.5.sp,
+                    color = TextWhitePrimary,
+                    lineHeight = 20.sp
+                )
+            }
         }
     }
 }
