@@ -64,6 +64,11 @@ fun AlarmScreen(
     var showEditDialog by remember { mutableStateOf(false) }
     var editingAlarm by remember { mutableStateOf<AlarmEntity?>(null) }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var isIgnoringBattery by remember {
+        mutableStateOf(com.feng.suite.feature.clock.alarm.AlarmScheduler.isIgnoringBatteryOptimizations(context))
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -103,6 +108,51 @@ fun AlarmScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            // 电池优化未忽略告警横幅（引导穿透长夜休眠）
+            AnimatedVisibility(visible = !isIgnoringBattery) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFE53935).copy(alpha = 0.18f))
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.NotificationsActive,
+                                contentDescription = null,
+                                tint = Color(0xFFFF5252),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "为防止深度休眠导致闹钟不响，请允许无限制后台运行",
+                                fontSize = 12.sp,
+                                color = Color.White
+                            )
+                        }
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                com.feng.suite.feature.clock.alarm.AlarmScheduler.requestIgnoreBatteryOptimizations(context)
+                                isIgnoringBattery = true
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                        ) {
+                            Text("开启", color = YellowPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+
             // Fossify 经典顶部“下一次响铃”倒计时横幅
             AnimatedVisibility(visible = !countdownText.isNullOrBlank()) {
                 Box(

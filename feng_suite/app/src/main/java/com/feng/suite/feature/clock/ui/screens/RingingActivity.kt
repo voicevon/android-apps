@@ -104,7 +104,9 @@ class RingingActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        AlarmRinger.stop(this)
+        if (isFinishing) {
+            AlarmRinger.stop(this)
+        }
     }
 }
 

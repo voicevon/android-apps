@@ -54,8 +54,13 @@ class AlarmScheduler(private val context: Context) {
         )
 
         // 使用 Android 官方最高优先级 setAlarmClock：豁免 Doze 深度休眠，常驻系统锁屏与状态栏闹钟图标
-        val alarmClockInfo = AlarmManager.AlarmClockInfo(triggerTime, showPendingIntent)
-        alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
+        try {
+            val alarmClockInfo = AlarmManager.AlarmClockInfo(triggerTime, showPendingIntent)
+            alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
+        } catch (_: SecurityException) {
+            // Android 12+ 极端未授权场景回退
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
+        }
     }
 
     fun scheduleSnooze(alarmId: Long, minutes: Int, label: String, isVibrate: Boolean) {
@@ -85,8 +90,12 @@ class AlarmScheduler(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val alarmClockInfo = AlarmManager.AlarmClockInfo(triggerTime, showPendingIntent)
-        alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
+        try {
+            val alarmClockInfo = AlarmManager.AlarmClockInfo(triggerTime, showPendingIntent)
+            alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
+        } catch (_: SecurityException) {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
+        }
     }
 
     fun cancel(alarm: AlarmEntity) = cancel(alarm.id)
@@ -108,6 +117,35 @@ class AlarmScheduler(private val context: Context) {
     }
 
     companion object {
+        /**
+         * 检查应用是否已加入电池优化白名单 (豁免 Doze Mode 深度休眠)
+         */
+        fun isIgnoringBatteryOptimizations(context: Context): Boolean {
+            val powerManager = context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+            return powerManager?.isIgnoringBatteryOptimizations(context.packageName) ?: true
+        }
+
+        /**
+         * 请求加入电池优化白名单以保证深度休眠下 100% 唤醒
+         */
+        fun requestIgnoreBatteryOptimizations(context: Context) {
+            try {
+                val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = android.net.Uri.parse("package:${context.packageName}")
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(intent)
+            } catch (_: Exception) {
+                try {
+                    val fallbackIntent = Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(fallbackIntent)
+                } catch (_: Exception) {
+                }
+            }
+        }
+
         /**
          * 计算并生成类似 Fossify Clock 顶部的下一次闹钟倒计时文本
          */

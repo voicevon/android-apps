@@ -21,12 +21,18 @@ class BootReceiver : BroadcastReceiver() {
             val scheduler = AlarmScheduler(context)
             val db = AlarmDatabase.getInstance(context)
 
+            val pendingResult = goAsync()
             CoroutineScope(Dispatchers.IO).launch {
-                val enabledAlarms = db.alarmDao().getEnabledAlarms()
-                for (alarm in enabledAlarms) {
-                    scheduler.schedule(alarm)
+                try {
+                    val enabledAlarms = db.alarmDao().getEnabledAlarms()
+                    for (alarm in enabledAlarms) {
+                        scheduler.schedule(alarm)
+                    }
+                    TodoReminderScheduler(context).restoreAll()
+                } catch (_: Exception) {
+                } finally {
+                    pendingResult.finish()
                 }
-                TodoReminderScheduler(context).restoreAll()
             }
         }
     }
